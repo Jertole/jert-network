@@ -1,25 +1,38 @@
+
 import { Router, Request, Response } from "express";
+import { ethers } from "ethers";
+import { config } from "../config";
 
 const router = Router();
 
-/**
- * Placeholder endpoint for submitting signed transactions to the JERT network.
- * Later сюда подключится RPC (ethers.js или web3.js).
- */
+const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+
 router.post("/tx/send", async (req: Request, res: Response) => {
-  const { signedTx } = req.body;
+  try {
+    const { signedTx } = req.body;
 
-  if (!signedTx) {
-    return res.status(400).json({ error: "signedTx is required" });
+    if (!signedTx) {
+      return res.status(400).json({ error: "signedTx is required" });
+    }
+
+    // Broadcast TX to JERT private EVM
+    const txResponse = await provider.broadcastTransaction(signedTx);
+    const receipt = await txResponse.wait();
+
+    return res.json({
+      status: "confirmed",
+      txHash: receipt?.hash,
+      blockNumber: receipt?.blockNumber
+    });
+
+  } catch (err: any) {
+    console.error("TX relay error:", err.message);
+
+    return res.status(500).json({
+      error: "Transaction relay failed",
+      message: err.message
+    });
   }
-
-  // TODO: отправлять signedTx в приватную EVM (JERT RPC)
-  // сейчас просто отдаём заглушку:
-  return res.json({
-    status: "accepted",
-    txHash: "0xPLACEHOLDER_HASH",
-    note: "TX relay not implemented yet"
-  });
 });
 
 export default router;
