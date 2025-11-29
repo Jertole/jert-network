@@ -1,1 +1,30 @@
 
+--{
+  "config": {
+    "chainId": 7777,
+    "berlinBlock": 0,
+    "londonBlock": 0,
+    "ibft2": {
+      "blockperiodseconds": 2,
+      "epochlength": 30000,
+      "requesttimeoutseconds": 10,
+      "validators": [
+        "0xVALIDATOR1_ADDRESS",
+        "0xVALIDATOR2_ADDRESS",
+        "0xVALIDATOR3_ADDRESS",
+        "0xVALIDATOR4_ADDRESS",
+        "0xVALIDATOR5_ADDRESS"
+      ]
+    }
+  },
+  "nonce": "0x0",
+  "timestamp": "0x5ba43b740",
+  "gasLimit": "0x1c9c380",
+  "difficulty": "0x1",
+  "mixHash": "0x63746963616c2068656164",
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "extraData": "0x",
+  "alloc": {
+    "0x0000000000000000000000000000000000000001": { "balance": "0x0" }
+  }
+}
