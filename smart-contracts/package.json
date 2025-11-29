@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "compile": "hardhat compile",
-    "test": "hardhat test",
-    "deploy": "hardhat run scripts/deploy-all.ts --network jert"
-  },
+  "compile": "hardhat compile",
+  "test": "hardhat test",
+  "deploy": "hardhat run scripts/deploy-all.ts --network jert"
+}
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
       "hardhat": "^2.22.0",
