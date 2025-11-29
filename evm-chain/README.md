@@ -20,3 +20,20 @@ docker-compose.yml
 chmod +x scripts/*.sh
 ./scripts/init-network.sh
 docker-compose up -d
+# JERT Permissioned EVM Chain
+
+Configuration and scripts for running the JERT Permissioned EVM network
+(IBFT2 consensus, permissioned validators).
+
+## Structure
+
+- `config/genesis.json` – chain configuration (IBFT2, chainId, validators)
+- `config/static-nodes.json` – validator peer list
+- `config/permissioned-nodes.json` – allowed nodes
+- `scripts/init-network.sh` – bootstrap network (Docker + Besu)
+- `scripts/add-validator.sh` – template script for adding a validator
+- `scripts/remove-validator.sh` – template script for removing a validator
+- `docker-compose.yml` – multi-node Besu environment (5 validators + 1 observer)
+
+> ⚠️ Never commit real private keys to this repository. Use Docker volumes or
+> external key management for production.
