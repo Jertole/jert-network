@@ -1,1 +1,133 @@
 
+version: "3.8"
+
+services:
+  validator1:
+    image: hyperledger/besu:latest
+    container_name: jert-validator1
+    command: >
+      --data-path=/var/lib/besu
+      --genesis-file=/config/genesis.json
+      --bootnodes=
+      --p2p-port=30303
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,IBFT,ADMIN
+      --host-whitelist=*
+      --rpc-http-host=0.0.0.0
+      --rpc-http-port=8545
+      --permissions-nodes-config-file=/config/permissioned-nodes.json
+      --permissions-nodes-enabled
+    volumes:
+      - ./config:/config
+      - ./data/validator1:/var/lib/besu
+    ports:
+      - "8545:8545"
+      - "30303:30303"
+
+  validator2:
+    image: hyperledger/besu:latest
+    container_name: jert-validator2
+    command: >
+      --data-path=/var/lib/besu
+      --genesis-file=/config/genesis.json
+      --bootnodes=
+      --p2p-port=30304
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,IBFT,ADMIN
+      --host-whitelist=*
+      --rpc-http-host=0.0.0.0
+      --rpc-http-port=8546
+      --permissions-nodes-config-file=/config/permissioned-nodes.json
+      --permissions-nodes-enabled
+    volumes:
+      - ./config:/config
+      - ./data/validator2:/var/lib/besu
+    ports:
+      - "8546:8546"
+      - "30304:30304"
+
+  validator3:
+    image: hyperledger/besu:latest
+    container_name: jert-validator3
+    command: >
+      --data-path=/var/lib/besu
+      --genesis-file=/config/genesis.json
+      --bootnodes=
+      --p2p-port=30305
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,IBFT,ADMIN
+      --host-whitelist=*
+      --rpc-http-host=0.0.0.0
+      --rpc-http-port=8547
+      --permissions-nodes-config-file=/config/permissioned-nodes.json
+      --permissions-nodes-enabled
+    volumes:
+      - ./config:/config
+      - ./data/validator3:/var/lib/besu
+    ports:
+      - "8547:8547"
+      - "30305:30305"
+
+  validator4:
+    image: hyperledger/besu:latest
+    container_name: jert-validator4
+    command: >
+      --data-path=/var/lib/besu
+      --genesis-file=/config/genesis.json
+      --bootnodes=
+      --p2p-port=30306
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,IBFT,ADMIN
+      --host-whitelist=*
+      --rpc-http-host=0.0.0.0
+      --rpc-http-port=8548
+      --permissions-nodes-config-file=/config/permissioned-nodes.json
+      --permissions-nodes-enabled
+    volumes:
+      - ./config:/config
+      - ./data/validator4:/var/lib/besu
+    ports:
+      - "8548:8548"
+      - "30306:30306"
+
+  validator5:
+    image: hyperledger/besu:latest
+    container_name: jert-validator5
+    command: >
+      --data-path=/var/lib/besu
+      --genesis-file=/config/genesis.json
+      --bootnodes=
+      --p2p-port=30307
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,IBFT,ADMIN
+      --host-whitelist=*
+      --rpc-http-host=0.0.0.0
+      --rpc-http-port=8549
+      --permissions-nodes-config-file=/config/permissioned-nodes.json
+      --permissions-nodes-enabled
+    volumes:
+      - ./config:/config
+      - ./data/validator5:/var/lib/besu
+    ports:
+      - "8549:8549"
+      - "30307:30307"
+
+  observer:
+    image: hyperledger/besu:latest
+    container_name: jert-observer
+    command: >
+      --data-path=/var/lib/besu
+      --genesis-file=/config/genesis.json
+      --bootnodes=
+      --p2p-port=30308
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET
+      --host-whitelist=*
+      --rpc-http-host=0.0.0.0
+      --rpc-http-port=8550
+    volumes:
+      - ./config:/config
+      - ./data/observer:/var/lib/besu
+    ports:
+      - "8550:8550"
+      - "30308:30308"
