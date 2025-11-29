@@ -1,4 +1,7 @@
-
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 import { kycCheck } from "../compliance-middleware/kyc-check";
 import { amlCheck } from "../compliance-middleware/aml-check";
 
