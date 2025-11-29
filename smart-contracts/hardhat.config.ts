@@ -6,19 +6,18 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.20",
     settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200
-      }
+      optimizer: { enabled: true, runs: 200 }
     }
   },
   networks: {
-    // локальная/дев сеть JERT (private EVM)
     jert: {
-      url: "http://127.0.0.1:8545", // поменяете под свой RPC gateway
-      chainId: 7777
-      // accounts: [ "0x..." ]  // добавят девы через .env
+      url: process.env.JERT_RPC_URL || "http://127.0.0.1:8545",
+      chainId: 7777,
+      accounts: process.env.JERT_DEPLOYER_PRIVATE_KEY
+        ? [process.env.JERT_DEPLOYER_PRIVATE_KEY]
+        : []
     }
   }
 };
 
+export default config;
