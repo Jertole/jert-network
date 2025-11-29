@@ -1,0 +1,23 @@
+# Node
+node_modules/
+npm-debug.log
+yarn.lock
+
+# TypeScript
+dist/
+build/
+*.tsbuildinfo
+
+# Flutter / Dart
+build/
+.dart_tool/
+.packages
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
