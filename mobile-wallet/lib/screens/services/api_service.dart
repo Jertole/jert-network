@@ -72,7 +72,29 @@ Future<List<Map<String, dynamic>>> getHistory(String? address) async {
     required String to,
     required String amount,
   }) async {
-    // TODO: позже свяжем с /api/tx/send
-    return null;
+    final uri = Uri.parse('$baseUrl/tx/send');
+
+    try {
+      final body = json.encode({
+        // from сейчас больше информационное поле, для логов в будущем
+        'from': from,
+        'to': to,
+        'amount': amount,
+      });
+
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (resp.statusCode != 200) {
+        return null;
+      }
+
+      final data = json.decode(resp.body) as Map<String, dynamic>;
+      return data['txHash'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
-}
