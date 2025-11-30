@@ -39,10 +39,30 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getHistory(String? address) async {
-    if (address == null || address.isEmpty) {
+Future<List<Map<String, dynamic>>> getHistory(String? address) async {
+    if (address == null || address.isEmpty || address == 'Not set') {
       return [];
     }
+
+    final uri = Uri.parse('$baseUrl/tx/history')
+        .replace(queryParameters: {'address': address});
+
+    try {
+      final resp = await http.get(uri);
+      if (resp.statusCode != 200) {
+        return [];
+      }
+
+      final decoded = json.decode(resp.body);
+      if (decoded is List) {
+        return decoded.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+ 
     // TODO: когда сделаем /api/tx/history — подключим сюда
     return [];
   }
