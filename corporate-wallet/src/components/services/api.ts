@@ -21,6 +21,43 @@ export async function getRecentTransactions(address?: string): Promise<UICorpora
       return [];
     }
 
+export async function sendTreasuryTransaction(params: {
+  fromLabel?: string;
+  to: string;
+  amount: string;
+}): Promise<{ txHash?: string; error?: string }> {
+  const { fromLabel = "treasury", to, amount } = params;
+
+  try {
+    const resp = await fetch(API_BASE + "/tx/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: fromLabel,
+        to,
+        amount
+      })
+    });
+
+    if (!resp.ok) {
+      return { error: `HTTP ${resp.status}` };
+    }
+
+    const data = (await resp.json()) as any;
+
+    if (data.error) {
+      return { error: String(data.error) };
+    }
+
+    return {
+      txHash: String(data.txHash ?? "")
+    };
+  } catch (e: any) {
+    return { error: String(e?.message ?? "Unknown error") };
+  }
+}
     const data = (await resp.json()) as any[];
 
     return data.map((item) => ({
