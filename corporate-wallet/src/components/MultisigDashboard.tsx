@@ -5,6 +5,9 @@ import { sendTreasuryTransaction } from "../services/api";
 interface MultisigInfo {
   owners: string[];
   threshold: number;
+  To address
+  Amount (JERT)
+  Send from Treasury
 }
 
 export const MultisigDashboard: React.FC = () => {
@@ -36,6 +39,35 @@ export const MultisigDashboard: React.FC = () => {
     load();
   }, []);
 
+const handleSend = async () => {
+    setSendStatus(null);
+
+    if (!to || !amount) {
+      setSendStatus("Please fill recipient and amount.");
+      return;
+    }
+
+    setSending(true);
+    const result = await sendTreasuryTransaction({
+      to,
+      amount
+    });
+    setSending(false);
+
+    if (result.error) {
+      setSendStatus(`Error: ${result.error}`);
+    } else {
+      setSendStatus(`Sent. txHash: ${result.txHash}`);
+      setAmount("");
+      // баланс можно перезагрузить
+      try {
+        const b = await getTreasuryBalance();
+        setBalance(b);
+      } catch {
+        // ignore
+      }
+    }
+  };
   return (
     <div
       style={{
