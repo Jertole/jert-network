@@ -22,15 +22,76 @@ const ERC20_ABI = [
   "function decimals() view returns (uint8)"
 ];
 
-const SENDER_PRIVATE_KEY = process.env.SENDER_PRIVATE_KEY || "";
-
 router.post("/tx/send", async (req: Request, res: Response) => {
   try {
-    const { signedTx } = req.body;
+    const { signedTx, to, amount } = req.body as {
+      signedTx?: string;
+      to?: string;
+      amount?: string;
+    };
 
-    if (!signedTx) {
-      return res.status(400).json({ error: "signedTx is required" });
+    // Вариант 1: non-custodial – клиент сам подписал транзакцию
+    if (signedTx) {
+      const txResponse = await provider.broadcastTransaction(signedTx);
+      const receipt = await txResponse.wait();
+
+      return res.json({
+        mode: "raw",
+        status: "confirmed",
+        txHash: receipt?.hash,
+        blockNumber: receipt?.blockNumber
+      });
     }
+
+    // Вариант 2: dev-режим – backend сам отправляет JERT с hot-wallet
+    if (!SENDER_PRIVATE_KEY) {
+      return res.status(400).json({
+        error: "sender_private_key_not_configured",
+        message: "Backend dev wallet is not configured"
+      });
+    }
+
+    if (!JERT_TOKEN_ADDRESS || JERT_TOKEN_ADDRESS === "0x0000000000000000000000000000000000000000") {
+      return res.status(400).json({
+        error: "jert_token_not_configured",
+        message: "JERT_TOKEN_ADDRESS is not set"
+      });
+    }
+
+    if (!to || !amount) {
+      return res.status(400).json({
+        error: "missing_fields",
+        message: "Either signedTx or (to, amount) must be provided"
+      });
+    }
+
+    const wallet = new ethers.Wallet(SENDER_PRIVATE_KEY, provider);
+    const token = new ethers.Contract(JERT_TOKEN_ADDRESS, ERC20_ABI, wallet);
+
+    // amount — строка в виде "123.45"
+    const decimals: number = await token.decimals();
+    const value = ethers.parseUnits(amount, decimals);
+
+    const tx = await token.transfer(to, value);
+    const receipt = await tx.wait();
+
+    return res.json({
+      mode: "server",
+      status: "confirmed",
+      txHash: receipt?.hash,
+      blockNumber: receipt?.blockNumber,
+      from: wallet.address,
+      to,
+      amount
+    });
+  } catch (err: any) {
+    console.error("TX send error:", err.message);
+    return res.status(500).json({
+      error: "tx_send_failed",
+      message: err.message
+    });
+  }
+});
 
     // Broadcast TX to JERT private EVM
     const txResponse = await provider.broadcastTransaction(signedTx);
