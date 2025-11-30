@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package: flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/wallet_service.dart';
 import 'send_screen.dart';
 import 'receive_screen.dart';
 import 'history_screen.dart';
+import 'setting_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,7 +12,18 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+Future<void> _openSettings() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(currentAddress: _address),
+      ),
+    );
 
+    if (changed == true) {
+      // пересчитываем адрес и баланс
+      await _loadData();
+    }
+  }
 class _HomeScreenState extends State<HomeScreen> {
   String _balance = '0.0000 JERT';
   String _fiat = '~ 0.00 USD';
