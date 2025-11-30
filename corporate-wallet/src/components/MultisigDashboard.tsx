@@ -121,6 +121,81 @@ const handleSend = async () => {
               ))}
             </ul>
           </div>
+          <div
+            style={{
+              marginTop: 24,
+              paddingTop: 16,
+              borderTop: "1px solid rgba(255,255,255,0.08)"
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+              Send from Treasury (dev)
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                maxWidth: 420
+              }}
+            >
+              <input
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "rgba(0,0,0,0.4)",
+                  color: "#fff",
+                  fontSize: 12
+                }}
+                placeholder="Recipient address"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+              />
+              <input
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "rgba(0,0,0,0.4)",
+                  color: "#fff",
+                  fontSize: 12
+                }}
+                placeholder="Amount (JERT)"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <button
+                onClick={sending ? undefined : handleSend}
+                style={{
+                  marginTop: 4,
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  border: "none",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: sending ? "default" : "pointer",
+                  opacity: sending ? 0.6 : 1,
+                  background:
+                    "linear-gradient(90deg, #00e5ff 0%, #23d4ff 50%, #00b3ff 100%)",
+                  color: "#05070b"
+                }}
+              >
+                {sending ? "Sending..." : "Send from Treasury"}
+              </button>
+              {sendStatus && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    marginTop: 4,
+                    opacity: 0.8
+                  }}
+                >
+                  {sendStatus}
+                </div>
+              )}
+            </div>
+          </div>
         </>
       )}
 
