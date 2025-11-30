@@ -14,6 +14,15 @@ const ERC20_IFACE = new ethers.Interface([
   "event Transfer(address indexed from, address indexed to, uint256 value)",
   "function decimals() view returns (uint8)"
 ]);
+const JERT_TOKEN_ADDRESS =
+  process.env.JERT_TOKEN_ADDRESS || "0x0000000000000000000000000000000000000000";
+
+const ERC20_ABI = [
+  "function transfer(address to, uint256 value) returns (bool)",
+  "function decimals() view returns (uint8)"
+];
+
+const SENDER_PRIVATE_KEY = process.env.SENDER_PRIVATE_KEY || "";
 
 router.post("/tx/send", async (req: Request, res: Response) => {
   try {
