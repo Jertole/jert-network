@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getMultisigInfo, getTreasuryBalance } from "../services/jertContracts";
+import { sendTreasuryTransaction } from "../services/api";
 
 interface MultisigInfo {
   owners: string[];
@@ -10,6 +11,11 @@ export const MultisigDashboard: React.FC = () => {
   const [info, setInfo] = useState<MultisigInfo | null>(null);
   const [balance, setBalance] = useState<string>("0.0000 JERT");
   const [loading, setLoading] = useState<boolean>(false);
+
+  const [to, setTo] = useState<string>("");
+  const [amount, setAmount] = useState<string>("");
+  const [sending, setSending] = useState<boolean>(false);
+  const [sendStatus, setSendStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
