@@ -10,9 +10,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-Future<void> _openSettings() async {
+  State<HomeScreen> createState() => _HomeScreenState(Future<void> _openSettings() async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => SettingsScreen(currentAddress: _address),
@@ -22,6 +20,7 @@ Future<void> _openSettings() async {
     if (changed == true) {
       // пересчитываем адрес и баланс
       await _loadData();
+  
     }
   }
 class _HomeScreenState extends State<HomeScreen> {
