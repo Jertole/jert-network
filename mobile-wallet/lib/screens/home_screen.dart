@@ -159,6 +159,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('JERT Wallet'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _openSettings,
+          ),
+        ],
       ),
       body: _buildBody(),
       bottomNavigationBar: BottomNavigationBar(
@@ -171,9 +177,6 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
         ],
       ),
-    );
-  }
-}
 
 class _WalletActionButton extends StatelessWidget {
   final IconData icon;
