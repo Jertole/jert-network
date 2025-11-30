@@ -4,6 +4,11 @@ app.use((req, _res, next) => {
 });
 import { kycCheck } from "../compliance-middleware/kyc-check";
 import { amlCheck } from "../compliance-middleware/aml-check";
-
+import walletRouter from "./router/wallet":
+app.use("/api",walletRouter);
+app.use("/api",healthRouter);
+app.use("/api",txRouter);
+app.use("/api",oracleRouter);
+app.use("/api",complianceRouter);
 app.use("/api/tx/send", kycCheck, amlCheck);   // only KYC/AML users may send TX
 app.use("/api/oracle/update", amlCheck);       // oracle must be verified source
