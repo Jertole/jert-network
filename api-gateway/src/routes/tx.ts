@@ -7,6 +7,14 @@ const router = Router();
 
 const provider = new ethers.JsonRpcProvider(config.rpcUrl);
 
+const JERT_TOKEN_ADDRESS =
+  process.env.JERT_TOKEN_ADDRESS || "0x0000000000000000000000000000000000000000";
+
+const ERC20_IFACE = new ethers.Interface([
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "function decimals() view returns (uint8)"
+]);
+
 router.post("/tx/send", async (req: Request, res: Response) => {
   try {
     const { signedTx } = req.body;
