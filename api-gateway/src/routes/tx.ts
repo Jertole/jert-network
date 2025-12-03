@@ -1,244 +1,69 @@
 
-import { Router, Request, Response } from "express";
+// src/routes/tx.ts
+import { Router } from "express";
 import { ethers } from "ethers";
-import { config } from "../config";
+import { getProvider, getJertContract, getJertUsdPrice } from "../config";
 
 const router = Router();
 
-const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-
-const JERT_TOKEN_ADDRESS =
-  process.env.JERT_TOKEN_ADDRESS || "0x0000000000000000000000000000000000000000";
-
-const ERC20_IFACE = new ethers.Interface([
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
-  "function decimals() view returns (uint8)"
-]);
-const JERT_TOKEN_ADDRESS =
-  process.env.JERT_TOKEN_ADDRESS || "0x0000000000000000000000000000000000000000";
-
-const ERC20_ABI = [
-  "function transfer(address to, uint256 value) returns (bool)",
-  "function decimals() view returns (uint8)"
-];
-
-router.post("/tx/send", async (req: Request, res: Response) => {
+/**
+ * GET /tx/history?address=0x...
+ * Returns last N JERT transfers with direction (IN/OUT) and USD equivalent.
+ */
+router.get("/history", async (req, res) => {
   try {
-    const { signedTx, to, amount } = req.body as {
-      signedTx?: string;
-      to?: string;
-      amount?: string;
-    };
-
-    // Вариант 1: non-custodial – клиент сам подписал транзакцию
-    if (signedTx) {
-      const txResponse = await provider.broadcastTransaction(signedTx);
-      const receipt = await txResponse.wait();
-
-      return res.json({
-        mode: "raw",
-        status: "confirmed",
-        txHash: receipt?.hash,
-        blockNumber: receipt?.blockNumber
-      });
+    const address = String(req.query.address || "").trim();
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({ error: "Invalid address" });
     }
 
-    // Вариант 2: dev-режим – backend сам отправляет JERT с hot-wallet
-    if (!SENDER_PRIVATE_KEY) {
-      return res.status(400).json({
-        error: "sender_private_key_not_configured",
-        message: "Backend dev wallet is not configured"
-      });
-    }
+    const provider = getProvider();
+    const jert = getJertContract(provider);
+    const decimals = await jert.decimals();
+    const priceUsd = await getJertUsdPrice();
 
-    if (!JERT_TOKEN_ADDRESS || JERT_TOKEN_ADDRESS === "0x0000000000000000000000000000000000000000") {
-      return res.status(400).json({
-        error: "jert_token_not_configured",
-        message: "JERT_TOKEN_ADDRESS is not set"
-      });
-    }
+    const filterTo = jert.filters.Transfer(null, address);
+    const filterFrom = jert.filters.Transfer(address, null);
 
-    if (!to || !amount) {
-      return res.status(400).json({
-        error: "missing_fields",
-        message: "Either signedTx or (to, amount) must be provided"
-      });
-    }
+    const [logsIn, logsOut] = await Promise.all([
+      jert.queryFilter(filterTo, -5000),
+      jert.queryFilter(filterFrom, -5000),
+    ]);
 
-    const wallet = new ethers.Wallet(SENDER_PRIVATE_KEY, provider);
-    const token = new ethers.Contract(JERT_TOKEN_ADDRESS, ERC20_ABI, wallet);
-
-    // amount — строка в виде "123.45"
-    const decimals: number = await token.decimals();
-    const value = ethers.parseUnits(amount, decimals);
-
-    const tx = await token.transfer(to, value);
-    const receipt = await tx.wait();
-
-    return res.json({
-      mode: "server",
-      status: "confirmed",
-      txHash: receipt?.hash,
-      blockNumber: receipt?.blockNumber,
-      from: wallet.address,
-      to,
-      amount
-    });
-  } catch (err: any) {
-    console.error("TX send error:", err.message);
-    return res.status(500).json({
-      error: "tx_send_failed",
-      message: err.message
-    });
-  }
-});
-
-    // Broadcast TX to JERT private EVM
-    const txResponse = await provider.broadcastTransaction(signedTx);
-    const receipt = await txResponse.wait();
-
-    return res.json({
-      status: "confirmed",
-      txHash: receipt?.hash,
-      blockNumber: receipt?.blockNumber
-    });
-
-  } catch (err: any) {
-    console.error("TX relay error:", err.message);
-
-    return res.status(500).json({
-      error: "Transaction relay failed",
-      message: err.message
-    });
-  }
-});
-
-
-router.get("/tx/history", async (req: Request, res: Response) => {
-  try {
-    const address = (req.query.address as string | undefined) || "";
-    if (!address) {
-      return res.status(400).json({ error: "address is required" });
-    }
-
-    // если адрес токена не задан — безопасно возвращаем пустой список
-    if (
-      !JERT_TOKEN_ADDRESS ||
-      JERT_TOKEN_ADDRESS ===
-        "0x0000000000000000000000000000000000000000"
-    ) {
-      return res.json([]);
-    }
-
-    const normalized = ethers.getAddress(address);
-    const addressTopic = ethers.zeroPadValue(normalized, 32);
-    const transferTopic = ethers.id(
-      "Transfer(address,address,uint256)"
+    const events = [...logsIn, ...logsOut].sort(
+      (a, b) => Number(a.blockNumber) - Number(b.blockNumber)
     );
 
-    const currentBlock = await provider.getBlockNumber();
-    const fromBlock = currentBlock > 5000 ? currentBlock - 5000 : 0; // последние ~5000 блоков
+    const history = await Promise.all(
+      events.slice(-50).map(async (ev) => {
+        const from = ev.args?.from;
+        const to = ev.args?.to;
+        const rawAmount = ev.args?.value as bigint;
+        const amount = Number(ethers.formatUnits(rawAmount, decimals));
+        const type = to?.toLowerCase() === address.toLowerCase() ? "IN" : "OUT";
+        const block = await provider.getBlock(ev.blockNumber);
+        const ts = block?.timestamp
+          ? new Date(block.timestamp * 1000).toISOString()
+          : null;
 
-    // читаем логи Transfer по JERT токену
-    const logs = await provider.getLogs({
-      address: JERT_TOKEN_ADDRESS,
-      fromBlock,
-      toBlock: currentBlock,
-      topics: [transferTopic]
-    });
-
-    // узнаём decimals один раз
-    const tokenContract = new ethers.Contract(
-      JERT_TOKEN_ADDRESS,
-      ERC20_IFACE,
-      provider
+        return {
+          hash: ev.transactionHash,
+          type,
+          from,
+          to,
+          amountJERT: amount.toFixed(4),
+          equivalentUSD: (amount * priceUsd).toFixed(2),
+          blockNumber: Number(ev.blockNumber),
+          time: ts,
+        };
+      })
     );
-    const decimals: number = await tokenContract.decimals();
-    const factor = 10n ** BigInt(decimals);
-
-    // фильтруем те Transfer, где addr = from или to
-    const filtered = logs.filter((log) => {
-      const fromTopic = log.topics[1];
-      const toTopic = log.topics[2];
-      return (
-        fromTopic === addressTopic || toTopic === addressTopic
-      );
-    });
-
-    // ограничим, чтобы не отдавать слишком много
-    const limited = filtered.slice(-100);
-
-    // собираем блоки для timestamp
-    const blockNumbers = Array.from(
-      new Set(limited.map((l) => l.blockNumber))
-    );
-    const blocks = await Promise.all(
-      blockNumbers.map((bn) => provider.getBlock(bn))
-    );
-    const blockMap = new Map<number, any>();
-    blocks.forEach((b) => {
-      if (b) blockMap.set(b.number, b);
-    });
-
-    const history = limited.map((log) => {
-      const parsed = ERC20_IFACE.parseLog(log);
-      const from: string = parsed.args.from;
-      const to: string = parsed.args.to;
-      const value: bigint = parsed.args.value;
-
-      const whole = value / factor;
-      const fraction = (value % factor)
-        .toString()
-        .padStart(decimals, "0")
-        .slice(0, 4);
-      const amountStr = `${whole.toString()}.${fraction} JERT`;
-
-      const block = blockMap.get(log.blockNumber);
-      const timestamp = block?.timestamp
-        ? new Date(block.timestamp * 1000).toISOString()
-        : null;
-
-      const type =
-        from.toLowerCase() === normalized.toLowerCase()
-          ? "OUT"
-          : "IN";
-
-      return {
-        hash: log.transactionHash,
-        type,
-        amount: amountStr,
-        blockNumber: log.blockNumber,
-        time: timestamp
-      };
-    });
 
     return res.json(history);
-  } catch (err: any) {
-    console.error("Error in /tx/history:", err.message);
-    return res.status(500).json({
-      error: "history_fetch_failed",
-      message: err.message
-    });
+  } catch (err) {
+    console.error("tx/history error", err);
+    return res.status(500).json({ error: "Internal error" });
   }
 });
-          {
-            hash: "0xMOCK_TX_HASH_1",
-            type: "INFO",
-            amount: "0.0000 JERT",
-            blockNumber: 0,
-            time: new Date().toISOString(),
-            address
-          }
-        ]
-      : [];
 
-  return res.json(mockHistory);
-  } catch (err: any) {
-    console.error("Error in /tx/history:", err.message);
-    return res.status(500).json({
-      error: "history_fetch_failed",
-      message: err.message
-    });
-  }
-});
 export default router;
