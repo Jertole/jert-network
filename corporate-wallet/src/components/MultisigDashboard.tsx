@@ -1,8 +1,11 @@
-// corporate-wallet/src/components/MultisigDashboard.tsx
+
 
 import React, { useEffect, useState } from "react";
 import { getMultisigInfo } from "../services/jertContracts";
-import {
+import { TransaktionsTable from "../TransactionsTable"; 
+    history={history}
+    loading={historyLoading}
+/>
   sendTreasuryTransaction,
   fetchTreasuryBalanceUSD,
   fetchTxHistory,
