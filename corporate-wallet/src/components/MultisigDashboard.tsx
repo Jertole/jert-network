@@ -353,7 +353,13 @@ export const MultisigDashboard: React.FC = () => {
             <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 4 }}>
               IN — inflow to treasury, OUT — payouts or infrastructure costs.
             </div>
-            {renderHistory()}
+            {<TransactionsTable
+    history={history}
+    loading={historyLoading}
+    compact={false}
+  />
+</div>
+              
           </div>
 
           {/* Отправка из казначейства (dev) */}
