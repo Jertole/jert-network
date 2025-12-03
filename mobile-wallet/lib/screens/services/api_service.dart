@@ -1,100 +1,98 @@
-
+// lib/services/api_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  ApiService._();
-  static final ApiService instance = ApiService._();
+  final String baseUrl;
 
-  /// Базовый URL API Gateway.
-  /// Можно переопределить через --dart-define=JERT_API_URL=...
-  final String baseUrl = const String.fromEnvironment(
-    'JERT_API_URL',
-    defaultValue: 'http://localhost:4000/api',
-  );
+  ApiService({required this.baseUrl});
 
-  Future<String> getBalance(String? address) async {
-    if (address == null || address.isEmpty || address == 'Not set') {
-      return '0.0000 JERT';
+  Future<WalletBalance> getBalance(String address) async {
+    final uri = Uri.parse('$baseUrl/wallet/balance?address=$address');
+    final resp = await http.get(uri);
+
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to load balance');
     }
 
-    final uri = Uri.parse('$baseUrl/wallet/balance')
-        .replace(queryParameters: {'address': address});
-
-    try {
-      final resp = await http.get(uri);
-
-      if (resp.statusCode != 200) {
-        return '0.0000 JERT';
-      }
-
-      final data = json.decode(resp.body) as Map<String, dynamic>;
-
-      // backend отдаёт поле formatted
-      final formatted = data['formatted'] as String? ?? '0.0000 JERT';
-      return formatted;
-    } catch (e) {
-      // На всякий случай при ошибках не роняем UI
-      return '0.0000 JERT';
-    }
+    final data = jsonDecode(resp.body);
+    return WalletBalance.fromJson(data);
   }
 
-Future<List<Map<String, dynamic>>> getHistory(String? address) async {
-    if (address == null || address.isEmpty || address == 'Not set') {
-      return [];
+  Future<List<TxHistoryItem>> getHistory(String address) async {
+    final uri = Uri.parse('$baseUrl/tx/history?address=$address');
+    final resp = await http.get(uri);
+
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to load history');
     }
 
-    final uri = Uri.parse('$baseUrl/tx/history')
-        .replace(queryParameters: {'address': address});
-
-    try {
-      final resp = await http.get(uri);
-      if (resp.statusCode != 200) {
-        return [];
-      }
-
-      final decoded = json.decode(resp.body);
-      if (decoded is List) {
-        return decoded.cast<Map<String, dynamic>>();
-      }
-      return [];
-    } catch (_) {
-      return [];
-    }
-  }
- 
-    // TODO: когда сделаем /api/tx/history — подключим сюда
-    return [];
+    final list = jsonDecode(resp.body) as List;
+    return list.map((e) => TxHistoryItem.fromJson(e)).toList();
   }
 
-  Future<String?> sendTransaction({
-    required String from,
-    required String to,
-    required String amount,
-  }) async {
+  Future<String> sendTransaction(String signedTx) async {
     final uri = Uri.parse('$baseUrl/tx/send');
+    final resp = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'signedTx': signedTx}),
+    );
 
-    try {
-      final body = json.encode({
-        // from сейчас больше информационное поле, для логов в будущем
-        'from': from,
-        'to': to,
-        'amount': amount,
-      });
-
-      final resp = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      if (resp.statusCode != 200) {
-        return null;
-      }
-
-      final data = json.decode(resp.body) as Map<String, dynamic>;
-      return data['txHash'] as String?;
-    } catch (_) {
-      return null;
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to send transaction');
     }
+
+    final data = jsonDecode(resp.body);
+    return data['txHash'] as String;
   }
+}
+
+class WalletBalance {
+  final String address;
+  final double balanceJert;
+  final double priceUsd;
+  final double equivalentUsd;
+
+  WalletBalance({
+    required this.address,
+    required this.balanceJert,
+    required this.priceUsd,
+    required this.equivalentUsd,
+  });
+
+  factory WalletBalance.fromJson(Map<String, dynamic> json) {
+    return WalletBalance(
+      address: json['address'] as String,
+      balanceJert: double.parse(json['balanceJERT'].toString()),
+      priceUsd: double.parse(json['priceUSD'].toString()),
+      equivalentUsd: double.parse(json['equivalentUSD'].toString()),
+    );
+  }
+}
+
+class TxHistoryItem {
+  final String hash;
+  final String type; // IN or OUT
+  final double amountJert;
+  final double equivalentUsd;
+  final String? time;
+
+  TxHistoryItem({
+    required this.hash,
+    required this.type,
+    required this.amountJert,
+    required this.equivalentUsd,
+    this.time,
+  });
+
+  factory TxHistoryItem.fromJson(Map<String, dynamic> json) {
+    return TxHistoryItem(
+      hash: json['hash'] as String,
+      type: json['type'] as String,
+      amountJert: double.parse(json['amountJERT'].toString()),
+      equivalentUsd: double.parse(json['equivalentUSD'].toString()),
+      time: json['time'] as String?,
+    );
+  }
+}
