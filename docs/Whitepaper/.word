@@ -1,0 +1,75 @@
+JERT WHITEPAPER 
+Foundation for Green and ESG‑Linked Digital Infrastructure
+1. Executive Summary
+JERT is a Permissioned EVM-based digital infrastructure token designed to support Cryogas Kazakhstan, Vitlax Nordic AB (Sweden) and SY Power Energy Sàrl (Switzerland) in building the Green Cold Energy Network across Eurasia. The token enables prepaid LNG/LCNG services, logistics corridor integration, and regulated digital asset operations under the AIFC/AFSA framework. All valuations, tariffs and service fees in the JERT ecosystem are defined in USD; JERT functions as a USD‑denominated digital unit independent from local fiat currencies.
+2. Problem Statement
+Global logistics between EU and Asia faces delays, high emissions, and limited cold-chain integration. Cryogas introduces LNG‑based cold‑energy terminals, paired with a digital token infrastructure enabling prepaid services, leasing, and ESG reporting.
+3. Cryogas Infrastructure Overview
+- LNG → Cold energy extraction → BTU systems
+- LCNG fueling infrastructure
+- B2B logistics & warehousing zones
+- Digital terminal oversight via the JERT network
+4. Token Model (JERT)
+- Fixed supply: 1 trillion tokens
+- 50% Infrastructure Reserve
+- 50% Distributed (Variant B model)
+- Utility: prepaid services, leases, ESG reporting, corridor integration
+JERT is explicitly denominated in USD. All infrastructure services, long‑term leases, corridor logistics tariffs, and ecosystem fees are calculated in USD‑equivalent terms. JERT is not pegged to any national currency (including KZT); instead, it acts as a USD‑based digital unit that removes local FX volatility from infrastructure financing.
+- All service pricing and leasing contracts are expressed in USD.
+- JERT supply remains fixed; USD valuation is driven by infrastructure demand and market liquidity.
+- Eliminates exposure to local currency devaluation risk for global suppliers and investors.
+4.1 USD Denomination & Pricing Standard
+5. Technology Stack
+- Permissioned EVM blockchain
+- IBFT/PoA consensus
+- Smart‑contracts: token, treasury, leasing, KYC registry
+- Compliance, Oracle modules
+- Public mobile wallet + corporate treasury wallet
+6. Network Architecture (Summary)
+See the detailed Architecture Overview inside the technical annex. The network includes 5 validator nodes, an API gateway, an explorer, wallets, and full compliance integration.
+7. Regulatory Alignment
+- Complies with AIFC Digital Asset Framework
+- Built‑in KYC/AML for corporate functions
+- Regulator dashboards
+- Real‑time audit logs
+8. Use Cases
+- Prepaid LNG/LCNG supply
+- B2B warehouse leasing
+- Terminal energy usage
+- ESG reporting
+- Cross‑border Middle Corridor operations
+9. Tokenomics
+- Supply: 1,000,000,000,000 JERT
+- Infrastructure Pool: 500 bn
+- Development/Market/Community: 500 bn
+- Burn mechanisms for inefficiencies (optional)
+10. Roadmap
+- Q1: Permissioned EVM deployment
+- Q2: Corporate Treasury Wallet
+- Q3: Public Mobile Wallet
+- Q4: EU–Asia Oracle Integration
+- Q5: Full Cryogas Terminal integration
+11. Governance
+- Multisig governance across KZ–SE–CH
+- Corporate vault control
+- Policy-based approvals
+12. Annex F – Architecture Overview (Short Extract)
+Full architecture described previously in TZ. Includes Validator Layer, Core Contracts, Gateway, Wallets, and Compliance.
+13. Annex H – Multisig Treasury Governance Policy
+Multisig includes 3 signers: CEO Cryogas KZ, CEO Vitlax Nordic AB, CEO SY Power Energy Sàrl.
+Threshold: 2-of-3 signatures.
+Enforces: KYC whitelisting, time‑lock, audit trail, and emergency fail‑safe governance.
+Fully compatible with Gnosis Safe modules in Permissioned EVM.
+14. Annex G – Middle Corridor Oracle Model
+Annex G describes the data flow and oracle integrations required to support LNG pricing, Middle Corridor logistics metrics, terminal usage data, and ESG reporting on-chain. Oracles deliver:
+- LNG spot prices
+- Transit times and corridor load indexes
+- Terminal cold-energy usage
+- ESG carbon calculations
+All Oracle data is validated and pushed into the Permissioned EVM via secure endpoints.
+15. Architecture Diagram
+ 
+16. Multisig Governance Diagram
+ 
+
+
