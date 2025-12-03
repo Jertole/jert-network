@@ -35,7 +35,10 @@ contract LeaseContract is ComplianceGateway {
         treasury = treasury_;
     }
 
-    /// @notice Create a new lease (called by off-chain operator / marketplace)
+/// @dev All pricing logic for leases is denominated in USD off-chain.
+///      This contract only handles JERT amounts.
+
+    /// @notice Create a new lease (called by off-chain operator/marketplace)
     function createLease(
         address lessee,
         uint256 amountJert,
