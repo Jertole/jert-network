@@ -1,18 +1,28 @@
+-// corporate-wallet/src/components/MultisigDashboard.tsx
+
 import React, { useEffect, useState } from "react";
-import { getMultisigInfo, getTreasuryBalance } from "../services/jertContracts";
-import { sendTreasuryTransaction } from "../services/api";
+import { getMultisigInfo } from "../services/jertContracts";
+import {
+  sendTreasuryTransaction,
+  fetchTreasuryBalanceUSD,
+  WalletBalance,
+} from "../services/api";
 
 interface MultisigInfo {
   owners: string[];
   threshold: number;
-  To address
-  Amount (JERT)
-  Send from Treasury
+  // если позже добавишь address мультисига из контракта —
+  // сюда можно добавить: treasuryAddress?: string;
 }
+
+// адрес казначейства можно задать через .env
+const TREASURY_ADDRESS =
+  process.env.REACT_APP_TREASURY_ADDRESS ||
+  ""; // 0x... адрес multisig / казначейства
 
 export const MultisigDashboard: React.FC = () => {
   const [info, setInfo] = useState<MultisigInfo | null>(null);
-  const [balance, setBalance] = useState<string>("0.0000 JERT");
+  const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
   const [to, setTo] = useState<string>("");
@@ -20,18 +30,20 @@ export const MultisigDashboard: React.FC = () => {
   const [sending, setSending] = useState<boolean>(false);
   const [sendStatus, setSendStatus] = useState<string | null>(null);
 
+  // загрузка on-chain инфо + баланса казначейства
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const [mi, bal] = await Promise.all([
-          getMultisigInfo(),
-          getTreasuryBalance()
-        ]);
-        setInfo(mi);
-        setBalance(bal);
+        const mi = await getMultisigInfo();
+        setInfo(mi as MultisigInfo);
+
+        if (TREASURY_ADDRESS) {
+          const bal = await fetchTreasuryBalanceUSD(TREASURY_ADDRESS);
+          setBalance(bal);
+        }
       } catch (e) {
-        console.error("Failed to load multisig info:", e);
+        console.error("Failed to load multisig info or balance:", e);
       } finally {
         setLoading(false);
       }
@@ -39,7 +51,7 @@ export const MultisigDashboard: React.FC = () => {
     load();
   }, []);
 
-const handleSend = async () => {
+  const handleSend = async () => {
     setSendStatus(null);
 
     if (!to || !amount) {
@@ -47,27 +59,37 @@ const handleSend = async () => {
       return;
     }
 
-    setSending(true);
-    const result = await sendTreasuryTransaction({
-      to,
-      amount
-    });
-    setSending(false);
+    try {
+      setSending(true);
+      const result = await sendTreasuryTransaction({
+        to,
+        amount,
+      });
+      setSending(false);
 
-    if (result.error) {
-      setSendStatus(`Error: ${result.error}`);
-    } else {
-      setSendStatus(`Sent. txHash: ${result.txHash}`);
-      setAmount("");
-      // баланс можно перезагрузить
-      try {
-        const b = await getTreasuryBalance();
-        setBalance(b);
-      } catch {
-        // ignore
+      if (result.error) {
+        setSendStatus(`Error: ${result.error}`);
+      } else {
+        setSendStatus(`Sent. txHash: ${result.txHash}`);
+        setAmount("");
+
+        // обновляем баланс казначейства
+        try {
+          if (TREASURY_ADDRESS) {
+            const bal = await fetchTreasuryBalanceUSD(TREASURY_ADDRESS);
+            setBalance(bal);
+          }
+        } catch (e) {
+          console.error("Failed to refresh treasury balance:", e);
+        }
       }
+    } catch (e: any) {
+      setSending(false);
+      console.error("sendTreasuryTransaction error:", e);
+      setSendStatus(`Error: ${e?.message || "Unknown error"}`);
     }
   };
+
   return (
     <div
       style={{
@@ -75,17 +97,21 @@ const handleSend = async () => {
         border: "1px solid rgba(0,229,255,0.3)",
         padding: 24,
         background:
-          "radial-gradient(circle at top left, rgba(0,229,255,0.12), transparent 60%)"
+          "radial-gradient(circle at top left, rgba(0,229,255,0.12), transparent 60%)",
       }}
     >
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>Multisig Treasury Overview</div>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>
+          Multisig Treasury Overview
+        </div>
         <div style={{ fontSize: 12, opacity: 0.7 }}>
           2-of-3 governance: Cryogas KZ / Vitlax Nordic / SY Power Energy
         </div>
       </div>
 
-      {loading && <div style={{ fontSize: 12 }}>Loading on-chain data...</div>}
+      {loading && (
+        <div style={{ fontSize: 12 }}>Loading on-chain data and balances...</div>
+      )}
 
       {!loading && info && (
         <>
@@ -94,7 +120,7 @@ const handleSend = async () => {
               display: "flex",
               gap: 24,
               flexWrap: "wrap",
-              marginBottom: 16
+              marginBottom: 16,
             }}
           >
             <div>
@@ -105,14 +131,53 @@ const handleSend = async () => {
             </div>
             <div>
               <div style={{ fontSize: 12, opacity: 0.7 }}>Treasury Balance</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: "#00e5ff" }}>
-                {balance}
+              <div
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: "#00e5ff",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <span>
+                  {balance
+                    ? `${parseFloat(balance.balanceJERT).toFixed(2)} JERT`
+                    : "—"}
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    opacity: 0.8,
+                    marginTop: 2,
+                  }}
+                >
+                  {balance
+                    ? `≈ $${parseFloat(balance.equivalentUSD).toFixed(2)} USD`
+                    : "USD value not available"}
+                </span>
               </div>
             </div>
           </div>
 
+          {!TREASURY_ADDRESS && (
+            <div
+              style={{
+                fontSize: 11,
+                opacity: 0.7,
+                marginBottom: 12,
+                color: "#ffcc88",
+              }}
+            >
+              REACT_APP_TREASURY_ADDRESS is not set. Please define it in your
+              environment to enable USD balance view.
+            </div>
+          )}
+
           <div>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Owners</div>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
+              Owners
+            </div>
             <ul style={{ paddingLeft: 16, fontSize: 13 }}>
               {info.owners.map((o) => (
                 <li key={o} style={{ wordBreak: "break-all" }}>
@@ -121,11 +186,12 @@ const handleSend = async () => {
               ))}
             </ul>
           </div>
+
           <div
             style={{
               marginTop: 24,
               paddingTop: 16,
-              borderTop: "1px solid rgba(255,255,255,0.08)"
+              borderTop: "1px solid rgba(255,255,255,0.08)",
             }}
           >
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
@@ -136,7 +202,7 @@ const handleSend = async () => {
                 display: "flex",
                 flexDirection: "column",
                 gap: 8,
-                maxWidth: 420
+                maxWidth: 420,
               }}
             >
               <input
@@ -146,7 +212,7 @@ const handleSend = async () => {
                   border: "1px solid rgba(255,255,255,0.2)",
                   background: "rgba(0,0,0,0.4)",
                   color: "#fff",
-                  fontSize: 12
+                  fontSize: 12,
                 }}
                 placeholder="Recipient address"
                 value={to}
@@ -159,7 +225,7 @@ const handleSend = async () => {
                   border: "1px solid rgba(255,255,255,0.2)",
                   background: "rgba(0,0,0,0.4)",
                   color: "#fff",
-                  fontSize: 12
+                  fontSize: 12,
                 }}
                 placeholder="Amount (JERT)"
                 value={amount}
@@ -178,7 +244,7 @@ const handleSend = async () => {
                   opacity: sending ? 0.6 : 1,
                   background:
                     "linear-gradient(90deg, #00e5ff 0%, #23d4ff 50%, #00b3ff 100%)",
-                  color: "#05070b"
+                  color: "#05070b",
                 }}
               >
                 {sending ? "Sending..." : "Send from Treasury"}
@@ -188,7 +254,7 @@ const handleSend = async () => {
                   style={{
                     fontSize: 11,
                     marginTop: 4,
-                    opacity: 0.8
+                    opacity: 0.8,
                   }}
                 >
                   {sendStatus}
@@ -200,9 +266,10 @@ const handleSend = async () => {
       )}
 
       {!loading && !info && (
-        <div style={{ fontSize: 12, opacity: 0.7 }}>No on-chain data available.</div>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>
+          No on-chain data available.
+        </div>
       )}
     </div>
   );
 };
-
