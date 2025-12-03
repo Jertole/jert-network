@@ -10,6 +10,11 @@ contract JERTToken is ERC20, Ownable {
     // 1 trillion tokens with 18 decimals
     uint256 public constant MAX_SUPPLY = 1_000_000_000_000 * 10 ** 18;
 
+/// @notice JERT is a fixed-supply ERC-20 utility token.
+/// @dev Valuation is defined off-chain in USD terms; the contract
+///      does not handle FX, pricing, or any multi-currency logic.
+contract JERTToken is ERC20 {
+
     /// @param treasury Address that receives the full initial supply (multisig vault)
     constructor(address treasury) ERC20("JERT Infrastructure Token", "JERT") {
         require(treasury != address(0), "Treasury is zero");
@@ -17,3 +22,4 @@ contract JERTToken is ERC20, Ownable {
         _transferOwnership(treasury);
     }
 }
+
