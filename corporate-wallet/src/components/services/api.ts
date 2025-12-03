@@ -1,73 +1,88 @@
+// corporate-wallet/src/services/api.ts
 
-export interface UICorporateTx {
-  hash: string;
-  type: string;
-  amount: string;
-  blockNumber: number;
-  time: string;
+export interface TreasuryTxRequest {
+  to: string;
+  amount: string; // JERT amount as string
 }
 
-const API_BASE = import.meta.env.VITE_JERT_API_URL || "http://localhost:4000/api";
+export interface TreasuryTxResult {
+  txHash?: string;
+  error?: string;
+}
 
-export async function getRecentTransactions(address?: string): Promise<UICorporateTx[]> {
-  try {
-    const url = new URL(API_BASE + "/tx/history");
-    if (address) {
-      url.searchParams.set("address", address);
-    }
+export interface WalletBalance {
+  address: string;
+  balanceJERT: string;   // "1234.5678"
+  priceUSD: string;      // "0.100000"
+  equivalentUSD: string; // "123.45"
+}
 
-    const resp = await fetch(url.toString());
-    if (!resp.ok) {
-      return [];
-    }
-
-export async function sendTreasuryTransaction(params: {
-  fromLabel?: string;
+export interface TxHistoryItem {
+  hash: string;
+  type: "IN" | "OUT";
+  from: string;
   to: string;
-  amount: string;
-}): Promise<{ txHash?: string; error?: string }> {
-  const { fromLabel = "treasury", to, amount } = params;
+  amountJERT: string;
+  equivalentUSD: string;
+  blockNumber: number;
+  time?: string | null;
+}
 
+const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8080";
+
+/**
+ * Send treasury transaction (dev mode).
+ * Backend signs and broadcasts tx from treasury wallet.
+ */
+export async function sendTreasuryTransaction(
+  payload: TreasuryTxRequest
+): Promise<TreasuryTxResult> {
   try {
-    const resp = await fetch(API_BASE + "/tx/send", {
+    const res = await fetch(`${API_BASE}/tx/treasury`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: fromLabel,
-        to,
-        amount
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
-    if (!resp.ok) {
-      return { error: `HTTP ${resp.status}` };
+    if (!res.ok) {
+      const text = await res.text();
+      return { error: `HTTP ${res.status}: ${text}` };
     }
 
-    const data = (await resp.json()) as any;
-
-    if (data.error) {
-      return { error: String(data.error) };
-    }
-
+    const data = await res.json();
     return {
-      txHash: String(data.txHash ?? "")
+      txHash: data.txHash as string,
+      error: data.error as string | undefined,
     };
   } catch (e: any) {
-    return { error: String(e?.message ?? "Unknown error") };
+    console.error("sendTreasuryTransaction error", e);
+    return { error: e?.message || "Unknown error" };
   }
 }
-    const data = (await resp.json()) as any[];
 
-    return data.map((item) => ({
-      hash: String(item.hash ?? ""),
-      type: String(item.type ?? "INFO"),
-      amount: String(item.amount ?? "0.0000 JERT"),
-      blockNumber: Number(item.blockNumber ?? 0),
-      time: String(item.time ?? ""),
-    }));
-  } catch (_e) {
-    return [];
+/**
+ * Unified balance endpoint: JERT + USD.
+ * We используем тот же endpoint, что и для mobile-wallet:
+ *   GET /wallet/balance?address=0x...
+ */
+export async function fetchWalletBalance(
+  address: string
+): Promise<WalletBalance> {
+  const url = `${API_BASE}/wallet/balance?address=${encodeURIComponent(
+    address
+  )}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch wallet balance (HTTP ${res.status})`);
   }
+  const data = await res.json();
+  return {
+    address: data.address,
+    balanceJERT: String(data.balanceJERT ?? data.balanceJERT ?? data.balanceJert ?? data.balance),
+    priceUSD: String(data.priceUSD ?? data.priceUsd ?? "0"),
+    equivalentUSD: String(data.equivalentUSD ?? data.equivalentUsd ?? "0"),
+  };
 }
+
+/**
+ * Treasury-specific helper: отдаёт баланс JERT и USD для казначейского адреса
