@@ -1,68 +1,125 @@
 
-import React, { useEffect, useState } from "react";
-import { getRecentTransactions, UICorporateTx } from "../services/api";
 
-export const TransactionsTable: React.FC = () => {
-  const [items, setItems] = useState<UICorporateTx[]>([]);
+import React from "react";
+import { TxHistoryItem } from "../services/api";
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await getRecentTransactions();
-        setItems(data);
-      } catch (e) {
-        console.error("Failed to load transactions:", e);
-      }
-    };
-    load();
-  }, []);
+interface Props {
+  history: TxHistoryItem[];
+  loading?: boolean;
+  compact?: boolean;
+}
+
+export const TransactionsTable: React.FC<Props> = ({
+  history,
+  loading = false,
+  compact = false,
+}) => {
+  if (loading) {
+    return (
+      <div style={{ fontSize: 12, opacity: 0.8 }}>
+        Loading transaction history…
+      </div>
+    );
+  }
+
+  if (!history.length) {
+    return (
+      <div style={{ fontSize: 12, opacity: 0.7 }}>
+        No transactions found.
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
-        borderRadius: 16,
-        border: "1px solid rgba(0,229,255,0.2)",
-        padding: 24,
-        background: "#070b10"
+        marginTop: 8,
+        maxHeight: compact ? 200 : 320,
+        overflowY: "auto",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(0,0,0,0.25)",
       }}
     >
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>Recent Treasury Activity</div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>
-          On-chain movements of JERT from the corporate vault (view only).
-        </div>
-      </div>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: compact ? 11 : 12,
+        }}
+      >
+        <thead>
+          <tr
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              textAlign: "left",
+              height: 34,
+            }}
+          >
+            <th style={{ padding: "6px 8px" }}>Type</th>
+            <th style={{ padding: "6px 8px" }}>JERT</th>
+            <th style={{ padding: "6px 8px" }}>USD</th>
+            {!compact && <th style={{ padding: "6px 8px" }}>Hash</th>}
+            {!compact && <th style={{ padding: "6px 8px" }}>Time</th>}
+          </tr>
+        </thead>
 
-      {items.length === 0 ? (
-        <div style={{ fontSize: 12, opacity: 0.7 }}>
-          No transactions yet. They will appear here once the network is live.
-        </div>
-      ) : (
-        <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-              <th style={{ padding: "6px 4px" }}>Hash</th>
-              <th style={{ padding: "6px 4px" }}>Type</th>
-              <th style={{ padding: "6px 4px" }}>Amount</th>
-              <th style={{ padding: "6px 4px" }}>Block</th>
-              <th style={{ padding: "6px 4px" }}>Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((tx) => (
-              <tr key={tx.hash} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <td style={{ padding: "6px 4px", maxWidth: 200, wordBreak: "break-all" }}>
-                  {tx.hash}
+        <tbody>
+          {history.map((tx) => {
+            const isIn = tx.type === "IN";
+            const color = isIn ? "#63ffb2" : "#ff8072";
+            const sign = isIn ? "+" : "-";
+
+            const shortHash =
+              tx.hash.length > 20
+                ? `${tx.hash.slice(0, 10)}…${tx.hash.slice(-8)}`
+                : tx.hash;
+
+            return (
+              <tr
+                key={tx.hash}
+                style={{
+                  borderTop: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <td style={{ padding: "4px 8px", color }}>{tx.type}</td>
+                <td style={{ padding: "4px 8px", color }}>
+                  {sign}
+                  {parseFloat(tx.amountJERT).toFixed(4)}
                 </td>
-                <td style={{ padding: "6px 4px" }}>{tx.type}</td>
-                <td style={{ padding: "6px 4px" }}>{tx.amount}</td>
-                <td style={{ padding: "6px 4px" }}>{tx.blockNumber}</td>
-                <td style={{ padding: "6px 4px" }}>{tx.time}</td>
+                <td style={{ padding: "4px 8px", color }}>
+                  {sign}${parseFloat(tx.equivalentUSD).toFixed(2)}
+                </td>
+
+                {!compact && (
+                  <td
+                    style={{
+                      padding: "4px 8px",
+                      opacity: 0.85,
+                      fontFamily: "monospace",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={tx.hash}
+                  >
+                    {shortHash}
+                  </td>
+                )}
+                {!compact && (
+                  <td
+                    style={{
+                      padding: "4px 8px",
+                      opacity: 0.75,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tx.time || "—"}
+                  </td>
+                )}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 };
