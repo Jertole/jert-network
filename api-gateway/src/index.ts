@@ -7,6 +7,8 @@ import { amlCheck } from "../compliance-middleware/aml-check";
 import walletRouter from "./router/wallet":
 import express from "express";
 import { energyRouter } from "./routes/energy";
+import { txRouter } from "./routes/tx";
+app.use("/tx", txRouter);
 
 const app = express();
 app.use(express.json());
