@@ -61,3 +61,88 @@ contract LeaseContract is Ownable {
     /// @notice Registers a new lease agreement reference on-chain.
     /// @dev
     /// - Only callable by the contract owner (governance / operator).
+    /// - `leaseId` should be derived from an off-chain document (e.g. hash of PDF).
+    /// @param leaseId Off-chain lease identifier (e.g. hash or UUID).
+    /// @param tenant Address of the tenant (on-chain account).
+    /// @param startTimestamp Lease start time (Unix timestamp).
+    /// @param endTimestamp Lease end time (Unix timestamp).
+    function registerLease(
+        bytes32 leaseId,
+        address tenant,
+        uint256 startTimestamp,
+        uint256 endTimestamp
+    ) external onlyOwner {
+        require(leaseId != bytes32(0), "Lease: invalid leaseId");
+        require(tenant != address(0), "Lease: tenant is zero");
+        require(startTimestamp < endTimestamp, "Lease: invalid timeframe");
+        require(
+            _leases[leaseId].leaseId == bytes32(0),
+            "Lease: already exists"
+        );
+
+        _leases[leaseId] = Lease({
+            leaseId: leaseId,
+            tenant: tenant,
+            startTimestamp: startTimestamp,
+            endTimestamp: endTimestamp,
+            status: LeaseStatus.Active
+        });
+
+        emit LeaseRegistered(leaseId, tenant, startTimestamp, endTimestamp);
+        emit LeaseStatusChanged(leaseId, LeaseStatus.Active);
+    }
+
+    /// @notice Updates the lifecycle status of an existing lease.
+    /// @dev Only callable by the owner (governance).
+    /// @param leaseId Off-chain lease identifier.
+    /// @param newStatus New lifecycle status for this lease.
+    function setLeaseStatus(
+        bytes32 leaseId,
+        LeaseStatus newStatus
+    ) external onlyOwner {
+        Lease storage l = _leases[leaseId];
+        require(l.leaseId != bytes32(0), "Lease: not found");
+        require(newStatus != LeaseStatus.None, "Lease: invalid status");
+
+        l.status = newStatus;
+        emit LeaseStatusChanged(leaseId, newStatus);
+    }
+
+    /// @notice Updates the term (start/end timestamps) of an existing lease.
+    /// @dev Only callable by the owner (governance).
+    /// @param leaseId Off-chain lease identifier.
+    /// @param newStartTimestamp New lease start time.
+    /// @param newEndTimestamp New lease end time.
+    function updateLeaseTerm(
+        bytes32 leaseId,
+        uint256 newStartTimestamp,
+        uint256 newEndTimestamp
+    ) external onlyOwner {
+        Lease storage l = _leases[leaseId];
+        require(l.leaseId != bytes32(0), "Lease: not found");
+        require(newStartTimestamp < newEndTimestamp, "Lease: invalid timeframe");
+
+        l.startTimestamp = newStartTimestamp;
+        l.endTimestamp = newEndTimestamp;
+
+        emit LeaseTermUpdated(leaseId, newStartTimestamp, newEndTimestamp);
+    }
+
+    /// @notice Returns lease metadata by leaseId.
+    /// @param leaseId Off-chain lease identifier.
+    /// @return lease Full lease struct.
+    function getLease(
+        bytes32 leaseId
+    ) external view returns (Lease memory lease) {
+        lease = _leases[leaseId];
+    }
+
+    /// @notice Returns the current status of a lease.
+    /// @param leaseId Off-chain lease identifier.
+    /// @return status Current LeaseStatus for this lease.
+    function getLeaseStatus(
+        bytes32 leaseId
+    ) external view returns (LeaseStatus status) {
+        status = _leases[leaseId].status;
+    }
+}
