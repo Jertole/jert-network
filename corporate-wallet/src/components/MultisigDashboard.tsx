@@ -380,4 +380,38 @@ export const MultisigDashboard: React.FC = () => {
                 </div>
               </>
             )}
-          </div
+          </div>
+        </>
+      )}
+
+      {!loading && !info && !error && (
+        <div style={{ fontSize: 12, opacity: 0.7 }}>
+          No on-chain data available.
+        </div>
+      )}
+    </div>
+  );
+};
+
+const thStyle: React.CSSProperties = {
+  textAlign: "left",
+  padding: "6px 8px",
+  borderBottom: "1px solid rgba(255,255,255,0.12)",
+  fontWeight: 600,
+};
+
+const tdStyle: React.CSSProperties = {
+  textAlign: "left",
+  padding: "6px 8px",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+};
+
+const pagerBtnStyle: React.CSSProperties = {
+  padding: "4px 10px",
+  borderRadius: 999,
+  border: "1px solid rgba(57,230,255,0.6)",
+  background: "rgba(5,6,10,0.9)",
+  color: "#fff",
+  cursor: "pointer",
+  fontSize: 12,
+};
