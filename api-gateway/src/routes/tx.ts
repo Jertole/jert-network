@@ -1,69 +1,57 @@
 
-// src/routes/tx.ts
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { ethers } from "ethers";
-import { getProvider, getJertContract, getJertUsdPrice } from "../config";
+import { getProvider } from "../config"; 
 
-const router = Router();
+export const txRouter = Router();
+
+const provider: ethers.JsonRpcProvider = getProvider();
 
 /**
  * GET /tx/history?address=0x...
- * Returns last N JERT transfers with direction (IN/OUT) and USD equivalent.
  */
-router.get("/history", async (req, res) => {
+txRouter.get("/history", async (req: Request, res: Response) => {
   try {
-    const address = String(req.query.address || "").trim();
-    if (!ethers.isAddress(address)) {
-      return res.status(400).json({ error: "Invalid address" });
+    const address = req.query.address as string | undefined;
+
+    if (!address || !ethers.isAddress(address)) {
+      return res.status(400).json({ error: "invalid_address" });
     }
 
-    const provider = getProvider();
-    const jert = getJertContract(provider);
-    const decimals = await jert.decimals();
-    const priceUsd = await getJertUsdPrice();
+    // Placeholder — real history requires DB/indexer
+    const history: any[] = [];
 
-    const filterTo = jert.filters.Transfer(null, address);
-    const filterFrom = jert.filters.Transfer(address, null);
-
-    const [logsIn, logsOut] = await Promise.all([
-      jert.queryFilter(filterTo, -5000),
-      jert.queryFilter(filterFrom, -5000),
-    ]);
-
-    const events = [...logsIn, ...logsOut].sort(
-      (a, b) => Number(a.blockNumber) - Number(b.blockNumber)
-    );
-
-    const history = await Promise.all(
-      events.slice(-50).map(async (ev) => {
-        const from = ev.args?.from;
-        const to = ev.args?.to;
-        const rawAmount = ev.args?.value as bigint;
-        const amount = Number(ethers.formatUnits(rawAmount, decimals));
-        const type = to?.toLowerCase() === address.toLowerCase() ? "IN" : "OUT";
-        const block = await provider.getBlock(ev.blockNumber);
-        const ts = block?.timestamp
-          ? new Date(block.timestamp * 1000).toISOString()
-          : null;
-
-        return {
-          hash: ev.transactionHash,
-          type,
-          from,
-          to,
-          amountJERT: amount.toFixed(4),
-          equivalentUSD: (amount * priceUsd).toFixed(2),
-          blockNumber: Number(ev.blockNumber),
-          time: ts,
-        };
-      })
-    );
-
-    return res.json(history);
+    return res.json({ address, history });
   } catch (err) {
-    console.error("tx/history error", err);
-    return res.status(500).json({ error: "Internal error" });
+    console.error("Error in /tx/history:", err);
+    return res.status(500).json({ error: "internal_error" });
   }
 });
 
-export default router;
+/**
+ * POST /tx/send
+ */
+txRouter.post("/send", async (req: Request, res: Response) => {
+  try {
+    const { rawTx } = req.body;
+
+    if (!rawTx || typeof rawTx !== "string") {
+      return res.status(400).json({ error: "missing_rawTx" });
+    }
+
+    const txResponse = await provider.sendTransaction(rawTx);
+    const receipt = await txResponse.wait(1);
+
+    return res.json({
+      hash: txResponse.hash,
+      blockNumber: receipt?.blockNumber,
+      status: receipt?.status,
+    });
+  } catch (err: any) {
+    console.error("Error in /tx/send:", err);
+    return res.status(500).json({
+      error: "tx_send_failed",
+      details: err?.message || String(err),
+    });
+  }
+});
