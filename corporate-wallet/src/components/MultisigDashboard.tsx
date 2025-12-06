@@ -430,4 +430,82 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
                         border: "none",
                         background: "#ff9800",
                         color: "#fff",
-                        cursor:
+                        cursor: isOwner ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      Revoke
+                    </button>
+                    <button
+                      onClick={() => handleExecute(tx.id)}
+                      disabled={!isOwner}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        border: "none",
+                        background: "#4caf50",
+                        color: "#fff",
+                        cursor: isOwner ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      Execute
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Executed transactions (simple view; при желании можно связать с TransactionsTable) */}
+      <div>
+        <h3>Executed Transactions</h3>
+        {executedTxs.length === 0 && <p>No executed transactions yet</p>}
+        {executedTxs.length > 0 && (
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "14px",
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  #
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  To
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  Value (ETH)
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  Confirmations
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {executedTxs.map((tx) => (
+                <tr key={tx.id.toString()}>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.id.toString()}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.to}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.valueEth}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.numConfirmations}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
