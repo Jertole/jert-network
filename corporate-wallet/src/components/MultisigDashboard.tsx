@@ -1,417 +1,434 @@
 
-import React, { useEffect, useMemo, useState } from "react";
-import { getMultisigInfo, getTreasuryBalance } from "../services/jertContracts";
-import {
-  convertJert,
-  getEnergyRates,
-  getRecentTransactions,
-  UICorporateTx,
-  EnergyRates,
-} from "../services/api";
 
-interface MultisigInfo {
-  owners: string[];
-  threshold: number;
-}
+import React, { useEffect, useState } from "react";
+import { ethers } from "ethers";
+import { getTreasuryMultisigContract } from "../services/jertContracts";
 
-const PAGE_SIZE = 10;
+type MultisigTx = {
+  id: bigint;
+  to: string;
+  valueEth: string;
+  data: string;
+  executed: boolean;
+  numConfirmations: number;
+};
 
-export const MultisigDashboard: React.FC = () => {
-  const [info, setInfo] = useState<MultisigInfo | null>(null);
-  const [balanceJert, setBalanceJert] = useState<number>(0);
+type MultisigDashboardProps = {
+  className?: string;
+};
 
-  const [rates, setRates] = useState<EnergyRates | null>(null);
-  const [energyMWh, setEnergyMWh] = useState<number>(0);
-  const [coldMWh, setColdMWh] = useState<number>(0);
+const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [account, setAccount] = useState<string | null>(null);
 
-  const [txs, setTxs] = useState<UICorporateTx[]>([]);
-  const [filterType, setFilterType] = useState<string>("ALL");
-  const [page, setPage] = useState<number>(1);
+  const [owners, setOwners] = useState<string[]>([]);
+  const [threshold, setThreshold] = useState<number>(0);
 
+  const [transactions, setTransactions] = useState<MultisigTx[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // form state
+  const [to, setTo] = useState<string>("");
+  const [valueEth, setValueEth] = useState<string>("0");
+  const [data, setData] = useState<string>("0x");
+
+  const isOwner = account
+    ? owners.map((o) => o.toLowerCase()).includes(account.toLowerCase())
+    : false;
+
+  // init provider + signer
   useEffect(() => {
-    const load = async () => {
+    const init = async () => {
+      if (typeof window === "undefined" || !(window as any).ethereum) {
+        setError("No EVM provider found. Please install MetaMask.");
+        return;
+      }
       try {
-        setLoading(true);
-        setError(null);
+        const browserProvider = new ethers.BrowserProvider(
+          (window as any).ethereum
+        );
+        setProvider(browserProvider);
 
-        const [infoRes, balanceRes, ratesRes] = await Promise.all([
-          getMultisigInfo(),
-          getTreasuryBalance(),
-          getEnergyRates(),
+        const accounts = await (window as any).ethereum.request({
+          method: "eth_requestAccounts",
+        });
+        const acc = accounts[0] as string;
+        setAccount(acc);
+
+        const signer = await browserProvider.getSigner();
+        setSigner(signer);
+      } catch (e: any) {
+        console.error(e);
+        setError("Failed to connect wallet");
+      }
+    };
+
+    void init();
+  }, []);
+
+  // load multisig summary + tx list
+  useEffect(() => {
+    const loadMultisigState = async () => {
+      if (!signer) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const multisig = getTreasuryMultisigContract(signer);
+
+        const [ownersFromChain, thresholdFromChain] = await Promise.all([
+          multisig.getOwners(),
+          multisig.getThreshold(),
         ]);
 
-        // balanceRes может быть строкой "123.45 JERT" или числом
-        let numericBalance = 0;
-        if (typeof balanceRes === "number") {
-          numericBalance = balanceRes;
-        } else {
-          const asString = String(balanceRes);
-          const parts = asString.split(" ");
-          numericBalance = parseFloat(parts[0]) || 0;
+        setOwners(ownersFromChain);
+        setThreshold(Number(thresholdFromChain));
+
+        // пытаемся получить общее количество транзакций
+        let txCount: bigint;
+        try {
+          txCount = await multisig.getTransactionCount();
+        } catch {
+          txCount = 0n;
         }
 
-        const conv = await convertJert(numericBalance);
-        const txHistory = await getRecentTransactions();
+        const txs: MultisigTx[] = [];
+        for (let i = 0n; i < txCount; i++) {
+          const tx = await multisig.getTransaction(i);
+          // предполагаем, что getTransaction возвращает:
+          // (to, value, data, executed, numConfirmations)
+          txs.push({
+            id: i,
+            to: tx.to,
+            valueEth: ethers.formatEther(tx.value),
+            data: tx.data,
+            executed: tx.executed,
+            numConfirmations: Number(tx.numConfirmations),
+          });
+        }
 
-        setInfo(infoRes);
-        setBalanceJert(numericBalance);
-        setRates(ratesRes);
-        setEnergyMWh(conv.energyMWhEquivalent);
-        setColdMWh(conv.coldMWhEquivalent);
-        setTxs(txHistory);
-        setPage(1);
+        setTransactions(txs);
       } catch (e: any) {
-        console.error("Failed to load multisig dashboard:", e);
-        setError(e?.message ?? "Failed to load multisig data");
+        console.error(e);
+        setError("Failed to load multisig data");
       } finally {
         setLoading(false);
       }
     };
 
-    load();
-  }, []);
+    void loadMultisigState();
+  }, [signer]);
 
-  // фильтрация и пагинация по типу
-  const { pagedTxs, totalPages } = useMemo(() => {
-    const filtered =
-      filterType === "ALL"
-        ? txs
-        : txs.filter((tx) => tx.type.toUpperCase() === filterType);
-    const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const currentPage = Math.min(page, pages);
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const slice = filtered.slice(start, start + PAGE_SIZE);
+  const refreshTransactions = async () => {
+    if (!signer) return;
+    try {
+      const multisig = getTreasuryMultisigContract(signer);
+      let txCount: bigint = 0n;
+      try {
+        txCount = await multisig.getTransactionCount();
+      } catch {
+        txCount = 0n;
+      }
 
-    return { pagedTxs: slice, totalPages: pages };
-  }, [txs, filterType, page]);
+      const txs: MultisigTx[] = [];
+      for (let i = 0n; i < txCount; i++) {
+        const tx = await multisig.getTransaction(i);
+        txs.push({
+          id: i,
+          to: tx.to,
+          valueEth: ethers.formatEther(tx.value),
+          data: tx.data,
+          executed: tx.executed,
+          numConfirmations: Number(tx.numConfirmations),
+        });
+      }
 
-  const handleChangeFilter = (next: string) => {
-    setFilterType(next);
-    setPage(1);
+      setTransactions(txs);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handlePrevPage = () => setPage((p) => Math.max(1, p - 1));
-  const handleNextPage = () =>
-    setPage((p) => Math.min(totalPages, p + 1));
+  const handleSubmitTx = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signer) return;
+    setStatusMessage(null);
+    setError(null);
 
-  // --- UI ---
+    try {
+      const multisig = getTreasuryMultisigContract(signer);
+
+      if (!ethers.isAddress(to)) {
+        setError("Invalid 'to' address");
+        return;
+      }
+
+      const valueWei = ethers.parseEther(valueEth || "0");
+      const txData = data === "" ? "0x" : data;
+
+      const tx = await multisig.submitTransaction(to, valueWei, txData);
+      await tx.wait();
+
+      setStatusMessage("Transaction proposal submitted");
+      setTo("");
+      setValueEth("0");
+      setData("0x");
+
+      await refreshTransactions();
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.reason || "Failed to submit transaction");
+    }
+  };
+
+  const handleConfirm = async (id: bigint) => {
+    if (!signer) return;
+    setStatusMessage(null);
+    setError(null);
+    try {
+      const multisig = getTreasuryMultisigContract(signer);
+      const tx = await multisig.confirmTransaction(id);
+      await tx.wait();
+      setStatusMessage(`Transaction #${id.toString()} confirmed`);
+      await refreshTransactions();
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.reason || "Failed to confirm transaction");
+    }
+  };
+
+  const handleRevoke = async (id: bigint) => {
+    if (!signer) return;
+    setStatusMessage(null);
+    setError(null);
+    try {
+      const multisig = getTreasuryMultisigContract(signer);
+      const tx = await multisig.revokeConfirmation(id);
+      await tx.wait();
+      setStatusMessage(`Confirmation revoked for TX #${id.toString()}`);
+      await refreshTransactions();
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.reason || "Failed to revoke confirmation");
+    }
+  };
+
+  const handleExecute = async (id: bigint) => {
+    if (!signer) return;
+    setStatusMessage(null);
+    setError(null);
+    try {
+      const multisig = getTreasuryMultisigContract(signer);
+      const tx = await multisig.executeTransaction(id);
+      await tx.wait();
+      setStatusMessage(`Transaction #${id.toString()} executed`);
+      await refreshTransactions();
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.reason || "Failed to execute transaction");
+    }
+  };
+
+  const pendingTxs = transactions.filter((t) => !t.executed);
+  const executedTxs = transactions.filter((t) => t.executed);
 
   return (
-    <div
-      style={{
-        padding: 24,
-        background: "rgba(5,6,10,0.9)",
-        borderRadius: 24,
-        border: "1px solid rgba(57,230,255,0.35)",
-      }}
-    >
-      <h2 style={{ marginTop: 0, marginBottom: 8 }}>Multisig Treasury</h2>
-      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 16 }}>
-        On-chain treasury securing Cryogas / JERT infrastructure budget.
-      </div>
+    <div className={className ?? ""} style={{ padding: "16px" }}>
+      <h2>Multisig Treasury Dashboard</h2>
 
-      {error && (
+      {account && (
+        <p>
+          Connected wallet: <b>{account}</b>{" "}
+          {isOwner ? (
+            <span style={{ color: "green" }}>(multisig owner)</span>
+          ) : (
+            <span style={{ color: "red" }}>(not an owner)</span>
+          )}
+        </p>
+      )}
+
+      {owners.length > 0 && (
         <div
           style={{
-            marginBottom: 12,
-            padding: 8,
-            borderRadius: 8,
-            background: "rgba(255,99,71,0.1)",
-            color: "salmon",
-            fontSize: 12,
+            marginBottom: "16px",
+            padding: "12px",
+            borderRadius: "8px",
+            border: "1px solid #00a3e8",
           }}
         >
-          Error: {error}
+          <h3>Owners & Threshold</h3>
+          <p>
+            Threshold: <b>{threshold}</b> of {owners.length}
+          </p>
+          <ul>
+            {owners.map((o) => (
+              <li key={o}>{o}</li>
+            ))}
+          </ul>
         </div>
       )}
 
-      {loading && (
-        <div style={{ fontSize: 12, opacity: 0.8 }}>Loading on-chain data…</div>
+      {error && (
+        <div style={{ color: "red", marginBottom: "8px" }}>{error}</div>
       )}
+      {statusMessage && (
+        <div style={{ color: "green", marginBottom: "8px" }}>
+          {statusMessage}
+        </div>
+      )}
+      {loading && <div>Loading multisig data…</div>}
 
-      {!loading && info && (
-        <>
-          {/* верхние карточки */}
-          <div
+      {/* New Transaction Form */}
+      <div
+        style={{
+          marginTop: "16px",
+          marginBottom: "24px",
+          padding: "16px",
+          borderRadius: "8px",
+          border: "1px solid #444",
+          background: "#0b1020",
+          color: "#e5f5ff",
+        }}
+      >
+        <h3>Submit New Transaction</h3>
+        {!isOwner && (
+          <p style={{ color: "#ffb347" }}>
+            Only multisig owners can submit transactions.
+          </p>
+        )}
+        <form onSubmit={handleSubmitTx}>
+          <div style={{ marginBottom: "8px" }}>
+            <label>
+              To address:
+              <input
+                type="text"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                style={{ width: "100%", padding: "6px", marginTop: "4px" }}
+                placeholder="0x..."
+              />
+            </label>
+          </div>
+          <div style={{ marginBottom: "8px" }}>
+            <label>
+              Value (ETH):
+              <input
+                type="number"
+                step="0.0001"
+                min="0"
+                value={valueEth}
+                onChange={(e) => setValueEth(e.target.value)}
+                style={{ width: "100%", padding: "6px", marginTop: "4px" }}
+              />
+            </label>
+          </div>
+          <div style={{ marginBottom: "8px" }}>
+            <label>
+              Data (hex, optional):
+              <input
+                type="text"
+                value={data}
+                onChange={(e) => setData(e.target.value)}
+                style={{ width: "100%", padding: "6px", marginTop: "4px" }}
+                placeholder="0x"
+              />
+            </label>
+          </div>
+          <button
+            type="submit"
+            disabled={!isOwner}
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 16,
-              marginBottom: 24,
+              marginTop: "8px",
+              padding: "8px 16px",
+              borderRadius: "6px",
+              border: "none",
+              background: isOwner ? "#00a3e8" : "#555",
+              color: "#fff",
+              cursor: isOwner ? "pointer" : "not-allowed",
             }}
           >
-            {/* Owners */}
-            <div
-              style={{
-                borderRadius: 16,
-                padding: 16,
-                border: "1px solid rgba(57,230,255,0.3)",
-                background: "rgba(5,6,10,0.95)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 12,
-                  opacity: 0.7,
-                  marginBottom: 6,
-                }}
-              >
-                Owners
-              </div>
-              <ul
-                style={{
-                  paddingLeft: 16,
-                  margin: 0,
-                  listStyle: "disc",
-                  fontSize: 12,
-                }}
-              >
-                {info.owners.map((o, idx) => (
-                  <li key={o + idx}>
-                    <code>{o}</code>
-                  </li>
-                ))}
-              </ul>
-              <div
-                style={{
-                  fontSize: 11,
-                  opacity: 0.7,
-                  marginTop: 8,
-                }}
-              >
-                {info.threshold}-of-{info.owners.length} governance:
-                Cryogas KZ, Vitlax Nordic, SY Power Energy.
-              </div>
-            </div>
+            Submit Proposal
+          </button>
+        </form>
+      </div>
 
-            {/* Threshold + Balance */}
-            <div
-              style={{
-                borderRadius: 16,
-                padding: 16,
-                border: "1px solid rgba(57,230,255,0.3)",
-                background: "rgba(5,6,10,0.95)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
-            >
-              <div>
-                <div
-                  style={{ fontSize: 12, opacity: 0.7, marginBottom: 2 }}
-                >
-                  Signing Threshold
-                </div>
-                <div style={{ fontSize: 24, fontWeight: 600 }}>
-                  {info.threshold} / {info.owners.length}
-                </div>
-              </div>
-              <div>
-                <div
-                  style={{ fontSize: 12, opacity: 0.7, marginBottom: 2 }}
-                >
-                  Treasury Balance
-                </div>
-                <div
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 600,
-                    color: "#39e6ff",
-                  }}
-                >
-                  {balanceJert.toFixed(4)} JERT
-                </div>
-              </div>
-            </div>
-
-            {/* Energy equivalents */}
-            <div
-              style={{
-                borderRadius: 16,
-                padding: 16,
-                border: "1px solid rgba(57,230,255,0.5)",
-                background:
-                  "radial-gradient(circle at top, rgba(57,230,255,0.18), rgba(5,6,10,0.98))",
-              }}
-            >
-              <div
-                style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}
-              >
-                Energy Equivalent
-              </div>
-              <div style={{ fontSize: 14 }}>
-                <div>≈ {energyMWh.toFixed(2)} MWh</div>
-                <div>≈ {coldMWh.toFixed(2)} MWh-cold</div>
-              </div>
-
-              {rates && (
-                <div
-                  style={{
-                    fontSize: 11,
-                    opacity: 0.7,
-                    marginTop: 8,
-                  }}
-                >
-                  Reference: {rates.usdPerMWh.toFixed(2)} USD/MWh,&nbsp;
-                  {rates.usdPerMWhCold.toFixed(2)} USD/MWh-cold
-                </div>
-              )}
-              <div
-                style={{
-                  fontSize: 10,
-                  opacity: 0.65,
-                  marginTop: 6,
-                }}
-              >
-                Conversion rules: 100 JERT = 1 MWh, 1000 JERT = 1 MWh-cold.
-                USD pricing handled off-chain by JERT Energy Oracle.
-              </div>
-            </div>
-          </div>
-
-          {/* Transactions section */}
-          <div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
-              }}
-            >
-              <h3 style={{ margin: 0 }}>Recent Treasury Transactions</h3>
-              <div style={{ display: "flex", gap: 8, fontSize: 12 }}>
-                <label>
-                  Type:&nbsp;
-                  <select
-                    value={filterType}
-                    onChange={(e) => handleChangeFilter(e.target.value)}
+      {/* Pending transactions */}
+      <div style={{ marginBottom: "24px" }}>
+        <h3>Pending Transactions</h3>
+        {pendingTxs.length === 0 && <p>No pending transactions</p>}
+        {pendingTxs.length > 0 && (
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "14px",
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  #
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  To
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  Value (ETH)
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  Confirmations
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingTxs.map((tx) => (
+                <tr key={tx.id.toString()}>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.id.toString()}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.to}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.valueEth}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                    {tx.numConfirmations}
+                  </td>
+                  <td
                     style={{
-                      background: "rgba(5,6,10,0.9)",
-                      color: "#fff",
-                      borderRadius: 999,
-                      padding: "4px 8px",
-                      border: "1px solid rgba(57,230,255,0.4)",
-                      fontSize: 12,
+                      borderBottom: "1px solid #333",
+                      padding: "4px",
+                      display: "flex",
+                      gap: "6px",
                     }}
                   >
-                    <option value="ALL">All</option>
-                    <option value="IN">IN</option>
-                    <option value="OUT">OUT</option>
-                    <option value="INFO">INFO</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-
-            {txs.length === 0 ? (
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
-                No transactions available yet.
-              </div>
-            ) : (
-              <>
-                <div style={{ overflowX: "auto" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: 12,
-                    }}
-                  >
-                    <thead>
-                      <tr>
-                        <th style={thStyle}>Hash</th>
-                        <th style={thStyle}>Type</th>
-                        <th style={thStyle}>Amount</th>
-                        <th style={thStyle}>Block</th>
-                        <th style={thStyle}>Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pagedTxs.map((tx) => (
-                        <tr key={tx.hash}>
-                          <td style={tdStyle}>
-                            <code>
-                              {tx.hash.slice(0, 10)}…{tx.hash.slice(-6)}
-                            </code>
-                          </td>
-                          <td style={tdStyle}>{tx.type}</td>
-                          <td style={tdStyle}>{tx.amount}</td>
-                          <td style={tdStyle}>{tx.blockNumber}</td>
-                          <td style={tdStyle}>{tx.time}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: 8,
-                    fontSize: 12,
-                  }}
-                >
-                  <div>
-                    Page {page} of {totalPages}
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
                     <button
-                      onClick={handlePrevPage}
-                      disabled={page <= 1}
-                      style={pagerBtnStyle}
+                      onClick={() => handleConfirm(tx.id)}
+                      disabled={!isOwner}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        border: "none",
+                        background: "#00a3e8",
+                        color: "#fff",
+                        cursor: isOwner ? "pointer" : "not-allowed",
+                      }}
                     >
-                      ◀ Prev
+                      Confirm
                     </button>
                     <button
-                      onClick={handleNextPage}
-                      disabled={page >= totalPages}
-                      style={pagerBtnStyle}
-                    >
-                      Next ▶
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
-
-      {!loading && !info && !error && (
-        <div style={{ fontSize: 12, opacity: 0.7 }}>
-          No on-chain data available.
-        </div>
-      )}
-    </div>
-  );
-};
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "6px 8px",
-  borderBottom: "1px solid rgba(255,255,255,0.12)",
-  fontWeight: 600,
-};
-
-const tdStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "6px 8px",
-  borderBottom: "1px solid rgba(255,255,255,0.06)",
-};
-
-const pagerBtnStyle: React.CSSProperties = {
-  padding: "4px 10px",
-  borderRadius: 999,
-  border: "1px solid rgba(57,230,255,0.6)",
-  background: "rgba(5,6,10,0.9)",
-  color: "#fff",
-  cursor: "pointer",
-  fontSize: 12,
-};
+                      onClick={() => handleRevoke(tx.id)}
+                      disabled={!isOwner}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        border: "none",
+                        background: "#ff9800",
+                        color: "#fff",
+                        cursor:
