@@ -1,68 +1,69 @@
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-/// Сервис работы с JERT API Gateway
-///
-/// ВАЖНО: поменяй [baseUrl] на реальный адрес своего API:
-///  - локально:  http://localhost:3000
-///  - прод:      https://api.jert.kz  (пример)
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000'; // TODO: изменить при деплое
+  final String baseUrl;
 
-  /// GET /energy/rates
-  /// Возвращает текущие конверсионные правила и USD-ставки
-  static Future<Map<String, dynamic>> getEnergyRates() async {
-    final uri = Uri.parse('$baseUrl/energy/rates');
+  ApiService({
+    this.baseUrl = const String.fromEnvironment(
+      'JERT_API_URL',
+      defaultValue: 'http://127.0.0.1:4000',
+    ),
+  });
+
+  Future<Map<String, dynamic>> getBalance(String address) async {
+    final uri = Uri.parse('$baseUrl/wallet/balance?address=$address');
     final resp = await http.get(uri);
 
     if (resp.statusCode != 200) {
-      throw Exception('Failed to load energy rates: ${resp.statusCode}');
+      throw Exception('Failed to load balance: ${resp.statusCode}');
     }
 
-    final data = json.decode(resp.body) as Map<String, dynamic>;
-    return data;
+    return jsonDecode(resp.body) as Map<String, dynamic>;
   }
 
-  /// GET /energy/convert?jert=X
-  /// Возвращает energyMWhEquivalent и coldMWhEquivalent
-  static Future<Map<String, dynamic>> convertJert(double jert) async {
-    final uri = Uri.parse('$baseUrl/energy/convert?jert=$jert');
+  Future<List<Map<String, dynamic>>> getHistory(String address) async {
+    final uri = Uri.parse('$baseUrl/wallet/history?address=$address');
     final resp = await http.get(uri);
 
     if (resp.statusCode != 200) {
-      throw Exception('Failed to convert JERT: ${resp.statusCode}');
+      throw Exception('Failed to load history: ${resp.statusCode}');
     }
 
-    final data = json.decode(resp.body) as Map<String, dynamic>;
-    return data;
-  }
-
-  /// (опционально на будущее) GET /tx/history?address=0x...
-  static Future<List<dynamic>> getTxHistory(String address) async {
-    final uri = Uri.parse('$baseUrl/tx/history?address=$address');
-    final resp = await http.get(uri);
-
-    if (resp.statusCode != 200) {
-      throw Exception('Failed to load tx history: ${resp.statusCode}');
+    final data = jsonDecode(resp.body);
+    if (data is List) {
+      return data.cast<Map<String, dynamic>>();
     }
-
-    final data = json.decode(resp.body) as Map<String, dynamic>;
-    return (data['history'] as List?) ?? <dynamic>[];
+    if (data is Map && data['items'] is List) {
+      return (data['items'] as List).cast<Map<String, dynamic>>();
+    }
+    return [];
   }
 
-  /// (опционально) POST /tx/send с уже подписанной транзакцией
-  static Future<Map<String, dynamic>> sendRawTx(String rawTx) async {
+  Future<String> sendTransaction({
+    required String from,
+    required String to,
+    required String amountJert,
+  }) async {
     final uri = Uri.parse('$baseUrl/tx/send');
+    final body = jsonEncode({
+      'from': from,
+      'to': to,
+      'amountJert': amountJert,
+    });
+
     final resp = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({'rawTx': rawTx}),
+      body: body,
     );
 
-    if (resp.statusCode != 200) {
-      throw Exception('Failed to send tx: ${resp.statusCode}');
+    if (resp.statusCode != 200 && resp.statusCode != 201) {
+      throw Exception('Failed to send tx: ${resp.body}');
     }
 
-    return json.decode(resp.body) as Map<String, dynamic>;
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    return (data['txHash'] ?? data['hash'] ?? '').toString();
   }
 }
