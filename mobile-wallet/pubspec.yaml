@@ -20,3 +20,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   flutter pub get
+flutter:
+  assets:
+    - assets/config/contract-addresses.json
