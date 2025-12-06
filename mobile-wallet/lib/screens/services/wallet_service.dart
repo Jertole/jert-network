@@ -1,46 +1,101 @@
+--import 'api_service.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
-/// Очень простой локальный кошелёк для прототипа мобильного приложения.
-/// Хранит address и баланс в SharedPreferences.
-///
-/// ПОТОМ:
-///  - можно заменить на web3dart + реальный private key
-///  - или интегрировать с внешним хранилищем
 class WalletService {
-  static const _addressKey = 'wallet_address';
-  static const _balanceKey = 'wallet_balance_jert';
+  final ApiService api;
 
-  /// Возвращает текущий адрес кошелька.
-  /// Если адреса нет — создаёт демо-адрес и сохраняет.
-  static Future<String> getAddress() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_addressKey);
+  WalletService({ApiService? apiService}) : api = apiService ?? ApiService();
 
-    if (stored != null && stored.isNotEmpty) {
-      return stored;
+  Future<WalletBalance> fetchBalance(String address) async {
+    final json = await api.getBalance(address);
+    return WalletBalance.fromJson(json);
+  }
+
+  Future<List<TxItem>> fetchHistory(String address) async {
+    final list = await api.getHistory(address);
+    return list.map((e) => TxItem.fromJson(e)).toList();
+  }
+
+  Future<String> sendJert({
+    required String from,
+    required String to,
+    required String amountJert,
+  }) async {
+    return api.sendTransaction(from: from, to: to, amountJert: amountJert);
+  }
+}
+
+class WalletBalance {
+  final String address;
+  final double balanceJert;
+  final double balanceUsd;
+  final double energyMwh;
+  final double energyMwhCold;
+
+  WalletBalance({
+    required this.address,
+    required this.balanceJert,
+    required this.balanceUsd,
+    required this.energyMwh,
+    required this.energyMwhCold,
+  });
+
+  factory WalletBalance.fromJson(Map<String, dynamic> json) {
+    double parseNum(dynamic v) {
+      if (v == null) return 0.0;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? 0.0;
+      return 0.0;
     }
 
-    // TODO: заменить на реальную генерацию EVM-адреса
-    const demoAddress = '0xDEMO000000000000000000000000000000000001';
-    await prefs.setString(_addressKey, demoAddress);
-    return demoAddress;
+    return WalletBalance(
+      address: json['address']?.toString() ?? '',
+      balanceJert: parseNum(json['balanceJert'] ?? json['jert']),
+      balanceUsd: parseNum(json['balanceUsd'] ?? json['usd']),
+      energyMwh: parseNum(json['energyMwh'] ?? json['mwh']),
+      energyMwhCold: parseNum(json['energyMwhCold'] ?? json['mwhCold']),
+    );
   }
+}
 
-  /// Возвращает локально сохранённый баланс JERT.
-  /// Пока это просто число в SharedPreferences.
-  ///
-  /// ПОТОМ:
-  ///  - заменить на реальный RPC-запрос к smart-contract JERTToken.
-  static Future<double> getBalance() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_balanceKey) ?? 0.0;
-  }
+class TxItem {
+  final String hash;
+  final String from;
+  final String to;
+  final double amountJert;
+  final String status;
+  final DateTime? timestamp;
 
-  /// Устанавливает локальный баланс (для тестов, демо).
-  /// Можно вызывать после отправки транзакции или для имитации прихода средств.
-  static Future<void> setBalance(double newBalance) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_balanceKey, newBalance);
+  TxItem({
+    required this.hash,
+    required this.from,
+    required this.to,
+    required this.amountJert,
+    required this.status,
+    this.timestamp,
+  });
+
+  factory TxItem.fromJson(Map<String, dynamic> json) {
+    double parseNum(dynamic v) {
+      if (v == null) return 0.0;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? 0.0;
+      return 0.0;
+    }
+
+    DateTime? ts;
+    if (json['timestamp'] != null) {
+      try {
+        ts = DateTime.parse(json['timestamp'].toString());
+      } catch (_) {}
+    }
+
+    return TxItem(
+      hash: json['hash']?.toString() ?? '',
+      from: json['from']?.toString() ?? '',
+      to: json['to']?.toString() ?? '',
+      amountJert: parseNum(json['amountJert'] ?? json['amount']),
+      status: json['status']?.toString() ?? 'unknown',
+      timestamp: ts,
+    );
   }
 }
