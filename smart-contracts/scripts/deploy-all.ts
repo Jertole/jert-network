@@ -1,4 +1,6 @@
 import { ethers } from "hardhat";
+import * as fs from "fs";
+import * as path from "path";
 
 async function main() {
   console.log("🚀 Deploying JERT core contracts...");
@@ -66,6 +68,30 @@ async function main() {
   const leaseAddress = await leaseContract.getAddress();
   console.log("LeaseContract deployed at:", leaseAddress);
 
+  // --- 6. Build JSON with addresses ---
+  const addresses = {
+    network: "jert-local",
+    chainId: 7777,
+    JERTToken: jertAddress,
+    TreasuryMultisig: treasuryAddress,
+    KYCRegistry: kycAddress,
+    ComplianceGateway: gatewayAddress,
+    LeaseContract: leaseAddress,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Путь к ../../docs/contract-addresses.json (из smart-contracts/scripts)
+  const outPath = path.join(__dirname, "..", "..", "docs", "contract-addresses.json");
+
+  // Убедимся, что папка docs существует
+  const outDir = path.dirname(outPath);
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+
+  fs.writeFileSync(outPath, JSON.stringify(addresses, null, 2), "utf-8");
+  console.log("\n📄 Saved contract addresses to:", outPath);
+
   console.log("\n✅ Deployment summary:");
   console.log("  JERTToken:         ", jertAddress);
   console.log("  TreasuryMultisig:  ", treasuryAddress);
@@ -75,7 +101,5 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+  console.error(error
 --
