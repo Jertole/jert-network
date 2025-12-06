@@ -8,6 +8,8 @@ import walletRouter from "./router/wallet":
 import express from "express";
 import { energyRouter } from "./routes/energy";
 import { txRouter } from "./routes/tx";
+import { complianceRouter } from "./routes/compliance";
+app.use("/compliance", complianceRouter);
 app.use("/tx", txRouter);
 
 const app = express();
