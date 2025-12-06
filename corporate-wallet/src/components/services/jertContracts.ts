@@ -1,76 +1,116 @@
+
 import { ethers } from "ethers";
 
-const RPC_URL = import.meta.env.VITE_JERT_RPC_URL || "http://127.0.0.1:8545";
+export interface MultisigInfo {
+  owners: string[];
+  threshold: number;
+}
 
-// TODO: заменить адреса и ABI реальными
-const TREASURY_MULTISIG_ADDRESS = "0x0000000000000000000000000000000000000000";
-const JERT_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
+// RPC и адреса читаем из .env (Vite)
+const RPC_URL =
+  import.meta.env.VITE_EVM_RPC_URL || "http://localhost:8545";
 
-const TREASURY_ABI: any[] = [
-  "function getOwners() view returns (address[])",
-  "function threshold() view returns (uint256)"
+const JERT_TOKEN_ADDRESS =
+  import.meta.env.VITE_JERT_TOKEN_ADDRESS ||
+  "0x0000000000000000000000000000000000000000"; // TODO: поменять на реальный адрес
+
+const TREASURY_MULTISIG_ADDRESS =
+  import.meta.env.VITE_TREASURY_MULTISIG_ADDRESS ||
+  "0x0000000000000000000000000000000000000000"; // TODO: поменять на реальный адрес
+
+// Минимальный ABI для ERC-20 JERT
+const jertTokenAbi = [
+  "function balanceOf(address account) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
 ];
 
-const JERT_ABI: any[] = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"];
+// Минимальный ABI для TreasuryMultisig
+//
+// Предполагаем, что контракт имеет либо:
+//   function getOwners() view returns (address[])
+//   function threshold() view returns (uint256)
+// или классическую Gnosis-схему:
+//   function getOwners() view returns (address[])
+//   function getThreshold() view returns (uint256)
+const treasuryMultisigAbi = [
+  "function getOwners() view returns (address[])",
+  "function threshold() view returns (uint256)",
+  "function getThreshold() view returns (uint256)",
+];
 
 let provider: ethers.JsonRpcProvider | null = null;
+let jertToken: ethers.Contract | null = null;
+let treasuryMultisig: ethers.Contract | null = null;
 
-function getProvider() {
+function getProvider(): ethers.JsonRpcProvider {
   if (!provider) {
     provider = new ethers.JsonRpcProvider(RPC_URL);
   }
   return provider;
 }
 
-export async function getMultisigInfo(): Promise<{ owners: string[]; threshold: number }> {
-  // TODO: включить реальный контракт, сейчас мок:
-  if (TREASURY_MULTISIG_ADDRESS === "0x0000000000000000000000000000000000000000") {
-    return {
-      owners: [
-        "CEO Cryogas KZ (placeholder)",
-        "CEO Vitlax Nordic AB (placeholder)",
-        "CEO SY Power Energy (placeholder)"
-      ],
-      threshold: 2
-    };
+function getJertToken(): ethers.Contract {
+  if (!jertToken) {
+    jertToken = new ethers.Contract(
+      JERT_TOKEN_ADDRESS,
+      jertTokenAbi,
+      getProvider()
+    );
   }
-
-  const prov = getProvider();
-  const contract = new ethers.Contract(
-    TREASURY_MULTISIG_ADDRESS,
-    TREASURY_ABI,
-    prov
-  );
-
-  const owners: string[] = await contract.getOwners();
-  const threshold: bigint = await contract.threshold();
-
-  return {
-    owners,
-    threshold: Number(threshold)
-  };
+  return jertToken;
 }
 
-export async function getTreasuryBalance(): Promise<string> {
-  if (
-    TREASURY_MULTISIG_ADDRESS === "0x0000000000000000000000000000000000000000" ||
-    JERT_TOKEN_ADDRESS === "0x0000000000000000000000000000000000000000"
-  ) {
-    return "0.0000 JERT";
+function getTreasury(): ethers.Contract {
+  if (!treasuryMultisig) {
+    treasuryMultisig = new ethers.Contract(
+      TREASURY_MULTISIG_ADDRESS,
+      treasuryMultisigAbi,
+      getProvider()
+    );
+  }
+  return treasuryMultisig;
+}
+
+/**
+ * Возвращает список владельцев и порог подписей для Multisig-казначейства.
+ */
+export async function getMultisigInfo(): Promise<MultisigInfo> {
+  const contract = getTreasury();
+
+  // 1) владельцы
+  const owners: string[] = await contract.getOwners();
+
+  // 2) порог: пробуем threshold(), если нет — getThreshold()
+  let threshold: number;
+  try {
+    const raw = await contract.threshold();
+    threshold = Number(raw);
+  } catch {
+    const raw = await contract.getThreshold();
+    threshold = Number(raw);
   }
 
-  const prov = getProvider();
-  const token = new ethers.Contract(JERT_TOKEN_ADDRESS, JERT_ABI, prov);
+  return { owners, threshold };
+}
 
-  const [rawBal, decimals]: [bigint, number] = await Promise.all([
+/**
+ * Возвращает баланс казначейства в JERT (double, уже с учётом decimals).
+ *
+ * Логика:
+ *  - читаем decimals и balanceOf(TREASURY_MULTISIG_ADDRESS)
+ *  - делим на 10**decimals
+ */
+export async function getTreasuryBalance(): Promise<number> {
+  const token = getJertToken();
+
+  const [rawBalance, decimals] = await Promise.all([
     token.balanceOf(TREASURY_MULTISIG_ADDRESS),
-    token.decimals()
+    token.decimals(),
   ]);
 
-  const factor = 10n ** BigInt(decimals);
-  const whole = rawBal / factor;
-  const fraction = (rawBal % factor).toString().padStart(decimals, "0").slice(0, 4);
+  const denom = 10 ** Number(decimals);
+  const asNumber = Number(ethers.toBigInt(rawBalance)) / denom;
 
-  return `${whole.toString()}.${fraction} JERT`;
+  return asNumber;
 }
-
