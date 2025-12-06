@@ -1,25 +1,15 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
-/// @title JERT Infrastructure Token
-/// @notice Fixed-supply ERC20 used for prepaid services, leases and ESG-linked flows.
-contract JERTToken is ERC20, Ownable {
-    // 1 trillion tokens with 18 decimals
-    uint256 public constant MAX_SUPPLY = 1_000_000_000_000 * 10 ** 18;
-
-/// @notice JERT is a fixed-supply ERC-20 utility token.
-/// @dev Valuation is defined off-chain in USD terms; the contract
-///      does not handle FX, pricing, or any multi-currency logic.
-contract JERTToken is ERC20 {
-
-    /// @param treasury Address that receives the full initial supply (multisig vault)
-    constructor(address treasury) ERC20("JERT Infrastructure Token", "JERT") {
-        require(treasury != address(0), "Treasury is zero");
-        _mint(treasury, MAX_SUPPLY);
-        _transferOwnership(treasury);
-    }
+/// @title JERT Utility Token (ERC-20)
+/// @notice ERC-20 utility token used as a unit of account inside the JERT Permissioned EVM Network
+///         and the Cryogas / JERT cold logistics and energy infrastructure.
+/// @dev
+/// - This contract implements a standard ERC-20 token with no on-chain pricing logic.
+/// - JERT is NOT a stablecoin and does NOT provide any redemption or claim rights in USD or any fiat currency.
+/// - USD valuation and the energy-denominated model (e.g. 100 JERT = 1 MWh, 1000 JERT = 1 MWh-cold)
+///   are defined and executed OFF-CHAIN by the JERT Energy Oracle and API Gateway.
+/// - This contract MUST NOT implement any on-chain logic that pegs, guarantees, or redeems JERT
+///   to USD, MWh, or any other measurement unit.
+/// - Supply, minting policies and access control MUST follow the governance rules approved
+///   by Cryogas Kazakhstan, Vitlax Nordic AB and SY Power Energy.
+contract JERTToken {
+    ...
 }
-
