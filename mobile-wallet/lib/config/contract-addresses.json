@@ -1,1 +1,3 @@
-
+flutter:
+  assets:
+    - assets/config/contract-addresses.json
