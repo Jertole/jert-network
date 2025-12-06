@@ -1,9 +1,24 @@
-# JERT Network — USD-Denominated Digital Utility Layer
-Building the Green Cold Energy Network Across Eurasia
+# jert-network
 
-The JERT Network is a permissioned EVM-based digital infrastructure powering Cryogas cold-energy terminals,
-LCNG fueling systems, and B2B logistics operations. JERT is fully USD‑denominated, providing stable and
-internationally compatible settlement for industrial services.
+JERT Network Monorepo — инфраструктура для JERT Permissioned EVM Network,
+поддерживаемой Cryogas Kazakhstan, Vitlax Nordic AB (Sweden) и SY Power Energy (Switzerland)
+в рамках стратегии **“Building the Green Cold Energy Network across Eurasia”**.
+
+## USD & Energy-Denominated Utility
+
+JERT — это **USD-номинированный утилити-токен**, связанный с реальными
+энергетическими потоками внутри инфраструктуры Cryogas:
+
+- **100 JERT = 1 MWh** электрической/тепловой энергии  
+- **1000 JERT = 1 MWh-Cold** (криогенная холодовая энергия, извлекаемая при регазификации LNG)
+
+Модель двойной деноминации:
+
+- USD-слой — финансовая понятность для инвесторов и партнёров  
+- Energy-слой — реальная индустриальная полезность для терминалов, складов, LCNG, дата-центров  
+
+Все расчёты тарифов и цен выполняются **off-chain** через JERT API (energy oracle),
+см. раздел `docs/EnergyLayer.md`.
 
 Repository structure:
 evm-chain/ – permissioned EVM
