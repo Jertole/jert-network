@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { getTreasuryMultisigContract } from "../services/jertContracts";
@@ -85,7 +86,6 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
         setOwners(ownersFromChain);
         setThreshold(Number(thresholdFromChain));
 
-        // пытаемся получить общее количество транзакций
         let txCount: bigint;
         try {
           txCount = await multisig.getTransactionCount();
@@ -96,8 +96,6 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
         const txs: MultisigTx[] = [];
         for (let i = 0n; i < txCount; i++) {
           const tx = await multisig.getTransaction(i);
-          // предполагаем, что getTransaction возвращает:
-          // (to, value, data, executed, numConfirmations)
           txs.push({
             id: i,
             to: tx.to,
@@ -233,6 +231,33 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
   const pendingTxs = transactions.filter((t) => !t.executed);
   const executedTxs = transactions.filter((t) => t.executed);
 
+  // ---------- helpers for visual status ----------
+  const getTxStatus = (tx: MultisigTx) => {
+    if (tx.executed) {
+      return { label: "EXECUTED", color: "#4caf50" };
+    }
+    if (threshold > 0 && tx.numConfirmations >= threshold) {
+      return { label: `READY ${tx.numConfirmations}/${threshold}`, color: "#00e676" };
+    }
+    return {
+      label: `PENDING ${tx.numConfirmations}/${threshold || "?"}`,
+      color: "#ffb300",
+    };
+  };
+
+  const getProgressBarWidth = (tx: MultisigTx) => {
+    if (!threshold || threshold <= 0) return "0%";
+    const ratio = Math.min(tx.numConfirmations / threshold, 1);
+    return `${(ratio * 100).toFixed(0)}%`;
+  };
+
+  const totalPending = pendingTxs.length;
+  const totalReady =
+    threshold > 0
+      ? pendingTxs.filter((t) => t.numConfirmations >= threshold).length
+      : 0;
+  const totalExecuted = executedTxs.length;
+
   return (
     <div className={className ?? ""} style={{ padding: "16px" }}>
       <h2>Multisig Treasury Dashboard</h2>
@@ -268,6 +293,53 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
           </ul>
         </div>
       )}
+
+      {/* Summary indicators */}
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          marginBottom: "16px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            padding: "8px 12px",
+            borderRadius: "8px",
+            background: "#101622",
+            border: "1px solid #00a3e8",
+            minWidth: "140px",
+          }}
+        >
+          <div style={{ fontSize: "12px", color: "#9fc5ff" }}>Pending</div>
+          <div style={{ fontSize: "18px", color: "#ffffff" }}>{totalPending}</div>
+        </div>
+        <div
+          style={{
+            padding: "8px 12px",
+            borderRadius: "8px",
+            background: "#10251b",
+            border: "1px solid #00e676",
+            minWidth: "140px",
+          }}
+        >
+          <div style={{ fontSize: "12px", color: "#a5ffce" }}>Ready (>= threshold)</div>
+          <div style={{ fontSize: "18px", color: "#ffffff" }}>{totalReady}</div>
+        </div>
+        <div
+          style={{
+            padding: "8px 12px",
+            borderRadius: "8px",
+            background: "#1b1010",
+            border: "1px solid #ef5350",
+            minWidth: "140px",
+          }}
+        >
+          <div style={{ fontSize: "12px", color: "#ffcdd2" }}>Executed</div>
+          <div style={{ fontSize: "18px", color: "#ffffff" }}>{totalExecuted}</div>
+        </div>
+      </div>
 
       {error && (
         <div style={{ color: "red", marginBottom: "8px" }}>{error}</div>
@@ -380,84 +452,134 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
                   Confirmations
                 </th>
                 <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
+                  Status
+                </th>
+                <th style={{ borderBottom: "1px solid #444", padding: "4px" }}>
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {pendingTxs.map((tx) => (
-                <tr key={tx.id.toString()}>
-                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
-                    {tx.id.toString()}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
-                    {tx.to}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
-                    {tx.valueEth}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
-                    {tx.numConfirmations}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: "1px solid #333",
-                      padding: "4px",
-                      display: "flex",
-                      gap: "6px",
-                    }}
-                  >
-                    <button
-                      onClick={() => handleConfirm(tx.id)}
-                      disabled={!isOwner}
+              {pendingTxs.map((tx) => {
+                const status = getTxStatus(tx);
+                const barWidth = getProgressBarWidth(tx);
+                return (
+                  <tr key={tx.id.toString()}>
+                    <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                      {tx.id.toString()}
+                    </td>
+                    <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                      {tx.to}
+                    </td>
+                    <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                      {tx.valueEth}
+                    </td>
+                    <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                      {tx.numConfirmations}/{threshold || "?"}
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          height: "6px",
+                          width: "100%",
+                          background: "#222",
+                          borderRadius: "3px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: barWidth,
+                            height: "100%",
+                            background:
+                              status.label.startsWith("READY") || status.label === "EXECUTED"
+                                ? "#00e676"
+                                : "#ffb300",
+                            transition: "width 0.2s ease-out",
+                          }}
+                        />
+                      </div>
+                    </td>
+                    <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "2px 8px",
+                          borderRadius: "12px",
+                          fontSize: "11px",
+                          background: "#111",
+                          color: status.color,
+                          border: `1px solid ${status.color}`,
+                        }}
+                      >
+                        {status.label}
+                      </span>
+                    </td>
+                    <td
                       style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        border: "none",
-                        background: "#00a3e8",
-                        color: "#fff",
-                        cursor: isOwner ? "pointer" : "not-allowed",
+                        borderBottom: "1px solid #333",
+                        padding: "4px",
+                        display: "flex",
+                        gap: "6px",
                       }}
                     >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => handleRevoke(tx.id)}
-                      disabled={!isOwner}
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        border: "none",
-                        background: "#ff9800",
-                        color: "#fff",
-                        cursor: isOwner ? "pointer" : "not-allowed",
-                      }}
-                    >
-                      Revoke
-                    </button>
-                    <button
-                      onClick={() => handleExecute(tx.id)}
-                      disabled={!isOwner}
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        border: "none",
-                        background: "#4caf50",
-                        color: "#fff",
-                        cursor: isOwner ? "pointer" : "not-allowed",
-                      }}
-                    >
-                      Execute
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      <button
+                        onClick={() => handleConfirm(tx.id)}
+                        disabled={!isOwner}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          border: "none",
+                          background: "#00a3e8",
+                          color: "#fff",
+                          cursor: isOwner ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => handleRevoke(tx.id)}
+                        disabled={!isOwner}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          border: "none",
+                          background: "#ff9800",
+                          color: "#fff",
+                          cursor: isOwner ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        Revoke
+                      </button>
+                      <button
+                        onClick={() => handleExecute(tx.id)}
+                        disabled={!isOwner || tx.numConfirmations < threshold}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          border: "none",
+                          background:
+                            isOwner && tx.numConfirmations >= threshold
+                              ? "#4caf50"
+                              : "#555",
+                          color: "#fff",
+                          cursor:
+                            isOwner && tx.numConfirmations >= threshold
+                              ? "pointer"
+                              : "not-allowed",
+                        }}
+                      >
+                        Execute
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
 
-      {/* Executed transactions (simple view; при желании можно связать с TransactionsTable) */}
+      {/* Executed transactions */}
       <div>
         <h3>Executed Transactions</h3>
         {executedTxs.length === 0 && <p>No executed transactions yet</p>}
@@ -498,7 +620,7 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
                     {tx.valueEth}
                   </td>
                   <td style={{ borderBottom: "1px solid #333", padding: "4px" }}>
-                    {tx.numConfirmations}
+                    {tx.numConfirmations}/{threshold || "?"}
                   </td>
                 </tr>
               ))}
@@ -509,3 +631,5 @@ const MultisigDashboard: React.FC<MultisigDashboardProps> = ({ className }) => {
     </div>
   );
 };
+
+export default MultisigDashboard;
