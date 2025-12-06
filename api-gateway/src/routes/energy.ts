@@ -1,4 +1,4 @@
-// src/routes/energy.ts
+
 import { Router, Request, Response } from "express";
 
 export const energyRouter = Router();
