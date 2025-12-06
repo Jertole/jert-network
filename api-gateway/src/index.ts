@@ -5,6 +5,13 @@ app.use((req, _res, next) => {
 import { kycCheck } from "../compliance-middleware/kyc-check";
 import { amlCheck } from "../compliance-middleware/aml-check";
 import walletRouter from "./router/wallet":
+import express from "express";
+import { energyRouter } from "./routes/energy";
+
+const app = express();
+app.use(express.json());
+
+app.use("/energy", energyRouter);
 app.use("/api",walletRouter);
 app.use("/api",healthRouter);
 app.use("/api",txRouter);
