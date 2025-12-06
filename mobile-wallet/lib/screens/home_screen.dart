@@ -1,187 +1,142 @@
-// mobile-wallet/lib/screens/home_screen.dart
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/wallet_service.dart';
+import 'send_screen.dart';
+import 'receive_screen.dart';
+import 'history_screen.dart';
+import 'setting_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final ApiService api;
-
-  const HomeScreen({super.key, required this.api});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _addressController = TextEditingController();
-  WalletBalance? _balance;
-  List<TxHistoryItem> _history = [];
-  bool _loading = false;
-  String? _error;
+  String address = "";
+  double balanceJert = 0.0;
 
-  Future<void> _loadData() async {
-    final addr = _addressController.text.trim();
-    if (addr.isEmpty) {
-      setState(() {
-        _error = "Please enter wallet address.";
-      });
-      return;
-    }
-    setState(() {
-      _error = null;
-      _loading = true;
-    });
+  double energyMWh = 0.0;
+  double coldMWh = 0.0;
 
-    try {
-      final bal = await widget.api.getBalance(addr);
-      final hist = await widget.api.getHistory(addr);
-      setState(() {
-        _balance = bal;
-        _history = hist;
-      });
-    } catch (e) {
-      setState(() {
-        _error = "Failed to load data: $e";
-      });
-    } finally {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
+  double usdPerMWh = 0.0;
+  double usdPerMWhCold = 0.0;
+
+  bool loading = true;
 
   @override
-  void dispose() {
-    _addressController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadWallet();
+  }
+
+  Future<void> _loadWallet() async {
+    final addr = await WalletService.getAddress();
+    final bal = await WalletService.getBalance();
+
+    final rates = await ApiService.getEnergyRates();
+    final converted = await ApiService.convertJert(bal);
+
+    setState(() {
+      address = addr;
+      balanceJert = bal;
+
+      energyMWh = converted["energyMWhEquivalent"];
+      coldMWh = converted["coldMWhEquivalent"];
+
+      usdPerMWh = rates["usdPerMWh"];
+      usdPerMWhCold = rates["usdPerMWhCold"];
+
+      loading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("JERT Wallet — USD"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _addressController,
-              decoration: const InputDecoration(
-                labelText: "Wallet address",
-                hintText: "0x...",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: _loading ? null : _loadData,
-                  child: _loading
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text("Load"),
-                ),
-                const SizedBox(width: 12),
-                if (_error != null)
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: Colors.redAccent),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_balance != null) _buildBalanceCard(theme),
-            const SizedBox(height: 16),
-            Expanded(child: _buildHistoryList(theme)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBalanceCard(ThemeData theme) {
-    final bal = _balance!;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.tealAccent.withOpacity(0.5)),
-        color: Colors.black.withOpacity(0.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Balance",
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "${bal.balanceJert.toStringAsFixed(2)} JERT",
-            style: theme.textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            "\$${bal.equivalentUsd.toStringAsFixed(2)} USD",
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: Colors.grey.shade300),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "Price: \$${bal.priceUsd.toStringAsFixed(6)} per JERT",
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: Colors.grey.shade500),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryList(ThemeData theme) {
-    if (_history.isEmpty) {
-      return Center(
-        child: Text(
-          "No transactions yet.",
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(color: Colors.grey.shade400),
-        ),
+    if (loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    return ListView.separated(
-      itemCount: _history.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final tx = _history[index];
-        final isIn = tx.type == "IN";
-        final color = isIn ? Colors.greenAccent : Colors.redAccent;
-        final sign = isIn ? "+" : "-";
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("JERT Wallet"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingScreen()),
+            ),
+          )
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Wallet Address:", style: TextStyle(color: Colors.grey)),
+            Text(address, style: const TextStyle(fontSize: 14)),
 
-        return ListTile(
-          dense: true,
-          title: Text(
-            "$sign${tx.amountJert.toStringAsFixed(4)} JERT"
-            "   (\$${tx.equivalentUsd.toStringAsFixed(2)} USD)",
-            style: theme.textTheme.bodyMedium?.copyWith(color: color),
-          ),
-          subtitle: Text(
-            tx.time ?? tx.hash,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: Colors.grey.shade400),
-          ),
-        );
-      },
+            const SizedBox(height: 20),
+
+            Text("Balance: $balanceJert JERT",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+
+            const SizedBox(height: 20),
+
+            // ENERGY SECTION
+            const Text("Energy Equivalent", style: TextStyle(fontSize: 16)),
+            Text("$energyMWh MWh", style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 8),
+            Text("$coldMWh MWh-cold", style: const TextStyle(fontSize: 14)),
+
+            const SizedBox(height: 20),
+
+            // USD RATES
+            const Text("USD Reference Rates", style: TextStyle(fontSize: 16)),
+            Text("USD/MWh: $usdPerMWh"),
+            Text("USD/MWh-cold: $usdPerMWhCold"),
+
+            const Spacer(),
+
+            // ACTION BUTTONS
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.send),
+                  label: const Text("Send"),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SendScreen()),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.download),
+                  label: const Text("Receive"),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ReceiveScreen()),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.history),
+                  label: const Text("History"),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
