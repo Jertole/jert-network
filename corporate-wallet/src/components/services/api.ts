@@ -1,88 +1,130 @@
-// corporate-wallet/src/services/api.ts
 
-export interface TreasuryTxRequest {
-  to: string;
-  amount: string; // JERT amount as string
-}
-
-export interface TreasuryTxResult {
-  txHash?: string;
-  error?: string;
-}
-
-export interface WalletBalance {
-  address: string;
-  balanceJERT: string;   // "1234.5678"
-  priceUSD: string;      // "0.100000"
-  equivalentUSD: string; // "123.45"
-}
-
-export interface TxHistoryItem {
+export interface UICorporateTx {
   hash: string;
-  type: "IN" | "OUT";
-  from: string;
-  to: string;
-  amountJERT: string;
-  equivalentUSD: string;
+  type: string;
+  amount: string;
   blockNumber: number;
-  time?: string | null;
+  time: string;
 }
 
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8080";
-
-/**
- * Send treasury transaction (dev mode).
- * Backend signs and broadcasts tx from treasury wallet.
- */
-export async function sendTreasuryTransaction(
-  payload: TreasuryTxRequest
-): Promise<TreasuryTxResult> {
-  try {
-    const res = await fetch(`${API_BASE}/tx/treasury`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return { error: `HTTP ${res.status}: ${text}` };
-    }
-
-    const data = await res.json();
-    return {
-      txHash: data.txHash as string,
-      error: data.error as string | undefined,
-    };
-  } catch (e: any) {
-    console.error("sendTreasuryTransaction error", e);
-    return { error: e?.message || "Unknown error" };
-  }
+export interface EnergyRates {
+  networkId: number;
+  jertPerMWh: number;
+  jertPerMWhCold: number;
+  usdPerMWh: number;
+  usdPerMWhCold: number;
+  timestamp: string;
 }
 
-/**
- * Unified balance endpoint: JERT + USD.
- * We используем тот же endpoint, что и для mobile-wallet:
- *   GET /wallet/balance?address=0x...
- */
-export async function fetchWalletBalance(
-  address: string
-): Promise<WalletBalance> {
-  const url = `${API_BASE}/wallet/balance?address=${encodeURIComponent(
-    address
-  )}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch wallet balance (HTTP ${res.status})`);
+export interface EnergyConversion {
+  jert: number;
+  energyMWhEquivalent: number;
+  coldMWhEquivalent: number;
+  networkId: number;
+}
+
+const API_BASE =
+  import.meta.env.VITE_JERT_API_URL || "http://localhost:4000/api";
+
+async function safeFetch(url: string, options?: RequestInit) {
+  const resp = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    ...options,
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`API error ${resp.status}: ${text}`);
   }
-  const data = await res.json();
+
+  return resp;
+}
+
+// ---------- Energy layer ----------
+
+export async function getEnergyRates(): Promise<EnergyRates> {
+  const resp = await safeFetch(`${API_BASE}/energy/rates`);
+  const data = (await resp.json()) as any;
+
   return {
-    address: data.address,
-    balanceJERT: String(data.balanceJERT ?? data.balanceJERT ?? data.balanceJert ?? data.balance),
-    priceUSD: String(data.priceUSD ?? data.priceUsd ?? "0"),
-    equivalentUSD: String(data.equivalentUSD ?? data.equivalentUsd ?? "0"),
+    networkId: Number(data.networkId ?? 0),
+    jertPerMWh: Number(data.jertPerMWh ?? 100),
+    jertPerMWhCold: Number(data.jertPerMWhCold ?? 1000),
+    usdPerMWh: Number(data.usdPerMWh ?? 1),
+    usdPerMWhCold: Number(data.usdPerMWhCold ?? 10),
+    timestamp: String(data.timestamp ?? new Date().toISOString()),
   };
 }
 
+export async function convertJert(
+  jertAmount: number
+): Promise<EnergyConversion> {
+  const resp = await safeFetch(
+    `${API_BASE}/energy/convert?jert=${encodeURIComponent(jertAmount)}`
+  );
+  const data = (await resp.json()) as any;
+
+  return {
+    jert: Number(data.jert ?? jertAmount),
+    energyMWhEquivalent: Number(data.energyMWhEquivalent ?? 0),
+    coldMWhEquivalent: Number(data.coldMWhEquivalent ?? 0),
+    networkId: Number(data.networkId ?? 0),
+  };
+}
+
+// ---------- Transactions ----------
+
 /**
- * Treasury-specific helper: отдаёт баланс JERT и USD для казначейского адреса
+ * Получаем историю транзакций казначейства.
+ * API (tx.ts) возвращает объект вида:
+ * { address: "0x...", history: [ {...}, {...} ] }
+ */
+export async function getRecentTransactions(
+  address?: string
+): Promise<UICorporateTx[]> {
+  try {
+    const url = new URL(`${API_BASE}/tx/history`);
+    if (address) {
+      url.searchParams.set("address", address);
+    }
+
+    const resp = await safeFetch(url.toString());
+    const data = (await resp.json()) as any;
+
+    const rawHistory: any[] = Array.isArray(data.history) ? data.history : [];
+
+    return rawHistory.map((item) => {
+      const hash = String(item.hash ?? "");
+      const type = String(item.type ?? "INFO");
+      const amountRaw = item.value ?? item.amount ?? "0";
+      const blockNumber = Number(item.blockNumber ?? 0);
+      const ts = item.timestamp ?? item.time ?? "";
+
+      // простое форматирование amount
+      const amountStr =
+        typeof amountRaw === "number"
+          ? `${amountRaw.toFixed(4)} JERT`
+          : `${String(amountRaw)} JERT`;
+
+      let timeStr = "";
+      if (typeof ts === "number") {
+        timeStr = new Date(ts * 1000).toISOString();
+      } else if (typeof ts === "string") {
+        timeStr = ts;
+      }
+
+      return {
+        hash,
+        type,
+        amount: amountStr,
+        blockNumber,
+        time: timeStr,
+      };
+    });
+  } catch (e) {
+    console.error("getRecentTransactions failed:", e);
+    return [];
+  }
+}
