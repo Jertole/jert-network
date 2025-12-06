@@ -1,84 +1,63 @@
---// SPDX-License-Identifier: MIT
+
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./ComplianceGateway.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title Lease Contract for B2B Zones and LCNG Services
-/// @notice Simple prepaid lease model in JERT tokens.
-contract LeaseContract is ComplianceGateway {
-    IERC20 public immutable jertToken;
-    address public immutable treasury; // where payments go
+/// @title JERT Infrastructure Lease Settlement Contract
+/// @notice On-chain representation of settlement states for long-term infrastructure
+///         and service agreements (e.g. land plots, terminals, cold-storage capacity).
+/// @dev
+/// - This contract does NOT replace or override any off-chain legal lease agreement.
+///   Legal rights and obligations are governed by signed off-chain contracts
+///   between Cryogas / partners / tenants.
+/// - The purpose of this contract is to:
+///   * Register identifiers of off-chain agreements (e.g. leaseId / agreementHash).
+///   * Record JERT-based settlement events and lifecycle statuses
+///     (e.g. active, expired, terminated).
+///   * Emit transparent events for audit and reporting.
+/// - No energy pricing or USD valuation is implemented on-chain.
+///   Conversion between JERT and MWh / MWh-cold is handled OFF-CHAIN.
+/// - The contract MUST NOT store raw personal data or confidential commercial terms.
+contract LeaseContract is Ownable {
+    /// @notice Possible on-chain lifecycle states for a lease.
+    enum LeaseStatus {
+        None,
+        Active,
+        Expired,
+        Terminated
+    }
 
+    /// @notice Basic lease metadata referencing an off-chain legal agreement.
     struct Lease {
-        address lessee;
-        uint256 amountJert;   // total JERT price
-        uint256 paidJert;     // how much already paid
-        uint64  startDate;
-        uint64  endDate;
-        bool    active;
+        bytes32 leaseId;         // off-chain lease/agreement identifier (hash, UUID, etc.)
+        address tenant;          // on-chain tenant address
+        uint256 startTimestamp;  // lease start (Unix timestamp)
+        uint256 endTimestamp;    // lease end (Unix timestamp)
+        LeaseStatus status;      // current lifecycle status
     }
 
-    uint256 public nextLeaseId;
-    mapping(uint256 => Lease) public leases;
+    /// @dev Mapping from leaseId to Lease struct.
+    mapping(bytes32 => Lease) private _leases;
 
-    event LeaseCreated(uint256 indexed leaseId, address indexed lessee, uint256 amountJert);
-    event LeasePayment(uint256 indexed leaseId, address indexed payer, uint256 amount);
-    event LeaseClosed(uint256 indexed leaseId);
+    /// @notice Emitted when a new lease reference is registered on-chain.
+    event LeaseRegistered(
+        bytes32 indexed leaseId,
+        address indexed tenant,
+        uint256 startTimestamp,
+        uint256 endTimestamp
+    );
 
-    constructor(address jertToken_, address kycRegistry_, address treasury_)
-        ComplianceGateway(kycRegistry_)
-    {
-        require(jertToken_ != address(0), "JERT token is zero");
-        require(treasury_ != address(0), "Treasury is zero");
-        jertToken = IERC20(jertToken_);
-        treasury = treasury_;
-    }
+    /// @notice Emitted when the lease status is changed.
+    event LeaseStatusChanged(bytes32 indexed leaseId, LeaseStatus newStatus);
 
-/// @dev All pricing logic for leases is denominated in USD off-chain.
-///      This contract only handles JERT amounts.
+    /// @notice Emitted when the lease term dates are updated.
+    event LeaseTermUpdated(
+        bytes32 indexed leaseId,
+        uint256 newStartTimestamp,
+        uint256 newEndTimestamp
+    );
 
-    /// @notice Create a new lease (called by off-chain operator/marketplace)
-    function createLease(
-        address lessee,
-        uint256 amountJert,
-        uint64 startDate,
-        uint64 endDate
-    ) external onlyKycAddress(lessee) returns (uint256 leaseId) {
-        require(endDate > startDate, "Invalid dates");
-        require(amountJert > 0, "Zero amount");
-
-        leaseId = ++nextLeaseId;
-        leases[leaseId] = Lease({
-            lessee: lessee,
-            amountJert: amountJert,
-            paidJert: 0,
-            startDate: startDate,
-            endDate: endDate,
-            active: true
-        });
-
-        emit LeaseCreated(leaseId, lessee, amountJert);
-    }
-
-    /// @notice Pay JERT towards an active lease
-    function payLease(uint256 leaseId, uint256 amount)
-        external
-        onlyKycAddress(msg.sender)
-    {
-        Lease storage l = leases[leaseId];
-        require(l.active, "Lease not active");
-        require(amount > 0, "Zero amount");
-        require(l.paidJert + amount <= l.amountJert, "Overpayment");
-
-        jertToken.transferFrom(msg.sender, treasury, amount);
-        l.paidJert += amount;
-
-        emit LeasePayment(leaseId, msg.sender, amount);
-
-        if (l.paidJert == l.amountJert) {
-            l.active = false;
-            emit LeaseClosed(leaseId);
-        }
-    }
-}
+    /// @notice Registers a new lease agreement reference on-chain.
+    /// @dev
+    /// - Only callable by the contract owner (governance / operator).
