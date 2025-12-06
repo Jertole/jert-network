@@ -1,26 +1,56 @@
 
+
 import { Router, Request, Response } from "express";
 
-const router = Router();
+export const complianceRouter = Router();
 
 /**
- * Compliance endpoint stub – позже будет стыковаться
- * с kyc-check.ts и aml-check.ts из compliance-middleware.
+ * POST /compliance/kyc-check
  */
-router.post("/compliance/check", async (req: Request, res: Response) => {
-  const { address } = req.body;
+complianceRouter.post("/kyc-check", async (req: Request, res: Response) => {
+  try {
+    const { address } = req.body;
 
-  if (!address) {
-    return res.status(400).json({ error: "address is required" });
+    if (!address) {
+      return res.status(400).json({ error: "missing_address" });
+    }
+
+    // TODO: integrate real KYC provider
+    return res.json({
+      address,
+      allowed: true,
+      provider: "mock-kyc",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Error in /compliance/kyc-check:", err);
+    return res.status(500).json({ error: "internal_error" });
   }
-
-  // TODO: вызвать реальные KYC/AML сервисы
-  return res.json({
-    address,
-    kyc: "unknown",
-    aml: "unknown",
-    note: "Compliance integration not implemented yet"
-  });
 });
 
-export default router;
+/**
+ * POST /compliance/aml-check
+ */
+complianceRouter.post("/aml-check", async (req: Request, res: Response) => {
+  try {
+    const { address } = req.body;
+
+    if (!address) {
+      return res.status(400).json({ error: "missing_address" });
+    }
+
+    // Mock AML score
+    const riskScore = 0.02;
+
+    return res.json({
+      address,
+      riskScore,
+      allowed: riskScore < 0.5,
+      provider: "mock-aml",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Error in /compliance/aml-check:", err);
+    return res.status(500).json({ error: "internal_error" });
+  }
+});
