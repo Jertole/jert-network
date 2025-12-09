@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -14,135 +13,154 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 /// - The purpose of this contract is to:
 ///   * Register identifiers of off-chain agreements (e.g. leaseId / agreementHash).
 ///   * Record JERT-based settlement events and lifecycle statuses
-///     (e.g. active, expired, terminated).
-///   * Emit transparent events for audit and reporting.
-/// - No energy pricing or USD valuation is implemented on-chain.
-///   Conversion between JERT and MWh / MWh-cold is handled OFF-CHAIN.
-/// - The contract MUST NOT store raw personal data or confidential commercial terms.
+///     (e.g. active, expired, terminated, completed).
 contract LeaseContract is Ownable {
-    /// @notice Possible on-chain lifecycle states for a lease.
+    /// @notice Lease lifecycle status.
     enum LeaseStatus {
-        None,
+        Inactive,
         Active,
-        Expired,
-        Terminated
+        Suspended,
+        Terminated,
+        Completed
     }
 
-    /// @notice Basic lease metadata referencing an off-chain legal agreement.
+    /// @notice Struct describing a registered lease.
     struct Lease {
-        bytes32 leaseId;         // off-chain lease/agreement identifier (hash, UUID, etc.)
-        address tenant;          // on-chain tenant address
-        uint256 startTimestamp;  // lease start (Unix timestamp)
-        uint256 endTimestamp;    // lease end (Unix timestamp)
-        LeaseStatus status;      // current lifecycle status
+        bytes32 leaseId;
+        address tenant;
+        uint64 startTimestamp;
+        uint64 endTimestamp;
+        uint256 totalAmount; // denominated in JERT smallest units (off-chain priced).
+        uint256 paidAmount;  // cumulative paid amount.
+        LeaseStatus status;
     }
 
-    /// @dev Mapping from leaseId to Lease struct.
+    /// @dev Mapping of lease identifiers to lease records.
     mapping(bytes32 => Lease) private _leases;
 
-    /// @notice Emitted when a new lease reference is registered on-chain.
+    /// @notice Emitted when a new lease is registered.
     event LeaseRegistered(
         bytes32 indexed leaseId,
         address indexed tenant,
-        uint256 startTimestamp,
-        uint256 endTimestamp
+        uint64 startTimestamp,
+        uint64 endTimestamp,
+        uint256 totalAmount
     );
 
-    /// @notice Emitted when the lease status is changed.
-    event LeaseStatusChanged(bytes32 indexed leaseId, LeaseStatus newStatus);
-
-    /// @notice Emitted when the lease term dates are updated.
-    event LeaseTermUpdated(
+    /// @notice Emitted when a lease payment is recorded.
+    event LeasePaymentRecorded(
         bytes32 indexed leaseId,
-        uint256 newStartTimestamp,
-        uint256 newEndTimestamp
+        address indexed payer,
+        uint256 amount,
+        uint256 newPaidAmount
     );
 
-    /// @notice Registers a new lease agreement reference on-chain.
-    /// @dev
-    /// - Only callable by the contract owner (governance / operator).
-    /// - `leaseId` should be derived from an off-chain document (e.g. hash of PDF).
-    /// @param leaseId Off-chain lease identifier (e.g. hash or UUID).
-    /// @param tenant Address of the tenant (on-chain account).
-    /// @param startTimestamp Lease start time (Unix timestamp).
-    /// @param endTimestamp Lease end time (Unix timestamp).
+    /// @notice Emitted when a lease status is updated.
+    event LeaseStatusUpdated(
+        bytes32 indexed leaseId,
+        LeaseStatus previousStatus,
+        LeaseStatus newStatus
+    );
+
+    /// @notice Registers a new lease.
+    /// @dev Only callable by the contract owner (infrastructure operator / admin).
+    /// @param leaseId Off-chain lease identifier or agreement hash.
+    /// @param tenant Address of the tenant / counterparty.
+    /// @param startTimestamp Lease start (UTC seconds).
+    /// @param endTimestamp Lease end (UTC seconds).
+    /// @param totalAmount Total nominal amount denominated in JERT smallest units.
     function registerLease(
         bytes32 leaseId,
         address tenant,
-        uint256 startTimestamp,
-        uint256 endTimestamp
+        uint64 startTimestamp,
+        uint64 endTimestamp,
+        uint256 totalAmount
     ) external onlyOwner {
-        require(leaseId != bytes32(0), "Lease: invalid leaseId");
-        require(tenant != address(0), "Lease: tenant is zero");
-        require(startTimestamp < endTimestamp, "Lease: invalid timeframe");
-        require(
-            _leases[leaseId].leaseId == bytes32(0),
-            "Lease: already exists"
-        );
+        require(leaseId != bytes32(0), "Lease: empty id");
+        require(tenant != address(0), "Lease: zero tenant");
+        require(_leases[leaseId].tenant == address(0), "Lease: already exists");
+        require(endTimestamp == 0 || endTimestamp > startTimestamp, "Lease: invalid period");
 
-        _leases[leaseId] = Lease({
+        Lease memory lease = Lease({
             leaseId: leaseId,
             tenant: tenant,
             startTimestamp: startTimestamp,
             endTimestamp: endTimestamp,
+            totalAmount: totalAmount,
+            paidAmount: 0,
             status: LeaseStatus.Active
         });
 
-        emit LeaseRegistered(leaseId, tenant, startTimestamp, endTimestamp);
-        emit LeaseStatusChanged(leaseId, LeaseStatus.Active);
+        _leases[leaseId] = lease;
+
+        emit LeaseRegistered(
+            leaseId,
+            tenant,
+            startTimestamp,
+            endTimestamp,
+            totalAmount
+        );
+        emit LeaseStatusUpdated(leaseId, LeaseStatus.Inactive, LeaseStatus.Active);
     }
 
-    /// @notice Updates the lifecycle status of an existing lease.
-    /// @dev Only callable by the owner (governance).
+    /// @notice Records a lease payment in JERT terms.
+    /// @dev This function only records accounting state on-chain. Actual token transfers
+    ///      are expected to happen in separate token contracts / treasuries.
+    ///      Only callable by the contract owner.
     /// @param leaseId Off-chain lease identifier.
-    /// @param newStatus New lifecycle status for this lease.
-    function setLeaseStatus(
-        bytes32 leaseId,
-        LeaseStatus newStatus
-    ) external onlyOwner {
-        Lease storage l = _leases[leaseId];
-        require(l.leaseId != bytes32(0), "Lease: not found");
-        require(newStatus != LeaseStatus.None, "Lease: invalid status");
+    /// @param amount Amount paid for this settlement event.
+    function recordPayment(bytes32 leaseId, uint256 amount) external onlyOwner {
+        require(amount > 0, "Lease: zero amount");
 
-        l.status = newStatus;
-        emit LeaseStatusChanged(leaseId, newStatus);
+        Lease storage lease = _leases[leaseId];
+        require(lease.tenant != address(0), "Lease: unknown id");
+        require(
+            lease.status == LeaseStatus.Active || lease.status == LeaseStatus.Suspended,
+            "Lease: not active"
+        );
+
+        lease.paidAmount += amount;
+
+        emit LeasePaymentRecorded(
+            leaseId,
+            _msgSender(),
+            amount,
+            lease.paidAmount
+        );
+
+        // Optionally mark as completed when fully paid.
+        if (lease.totalAmount > 0 && lease.paidAmount >= lease.totalAmount) {
+            LeaseStatus previous = lease.status;
+            lease.status = LeaseStatus.Completed;
+            emit LeaseStatusUpdated(leaseId, previous, LeaseStatus.Completed);
+        }
     }
 
-    /// @notice Updates the term (start/end timestamps) of an existing lease.
-    /// @dev Only callable by the owner (governance).
+    /// @notice Manually updates the status of a lease.
+    /// @dev Only callable by the owner. This is to reflect off-chain legal status changes.
     /// @param leaseId Off-chain lease identifier.
-    /// @param newStartTimestamp New lease start time.
-    /// @param newEndTimestamp New lease end time.
-    function updateLeaseTerm(
-        bytes32 leaseId,
-        uint256 newStartTimestamp,
-        uint256 newEndTimestamp
-    ) external onlyOwner {
-        Lease storage l = _leases[leaseId];
-        require(l.leaseId != bytes32(0), "Lease: not found");
-        require(newStartTimestamp < newEndTimestamp, "Lease: invalid timeframe");
+    /// @param newStatus New lease status.
+    function setLeaseStatus(bytes32 leaseId, LeaseStatus newStatus) external onlyOwner {
+        Lease storage lease = _leases[leaseId];
+        require(lease.tenant != address(0), "Lease: unknown id");
 
-        l.startTimestamp = newStartTimestamp;
-        l.endTimestamp = newEndTimestamp;
+        LeaseStatus previous = lease.status;
+        lease.status = newStatus;
 
-        emit LeaseTermUpdated(leaseId, newStartTimestamp, newEndTimestamp);
+        emit LeaseStatusUpdated(leaseId, previous, newStatus);
     }
 
-    /// @notice Returns lease metadata by leaseId.
+    /// @notice Returns the full lease struct for a given leaseId.
     /// @param leaseId Off-chain lease identifier.
-    /// @return lease Full lease struct.
-    function getLease(
-        bytes32 leaseId
-    ) external view returns (Lease memory lease) {
+    /// @return lease Full lease data.
+    function getLease(bytes32 leaseId) external view returns (Lease memory lease) {
         lease = _leases[leaseId];
     }
 
     /// @notice Returns the current status of a lease.
     /// @param leaseId Off-chain lease identifier.
     /// @return status Current LeaseStatus for this lease.
-    function getLeaseStatus(
-        bytes32 leaseId
-    ) external view returns (LeaseStatus status) {
+    function getLeaseStatus(bytes32 leaseId) external view returns (LeaseStatus status) {
         status = _leases[leaseId].status;
     }
 }
