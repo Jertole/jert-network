@@ -1,9 +1,8 @@
-
 import * as dotenv from "dotenv";
-dotenv.config();
-
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+
+dotenv.config();
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -11,32 +10,36 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
-      },
-    },
+        runs: 200
+      }
+    }
   },
-
   networks: {
-    jert: {
-      url: process.env.JERT_RPC_URL || "http://127.0.0.1:8545",
-      chainId: 7777,
-      accounts: process.env.JERT_DEPLOYER_PRIVATE_KEY
-        ? [process.env.JERT_DEPLOYER_PRIVATE_KEY]
-        : [],
+    hardhat: {},
+    localhost: {
+      url: "http://127.0.0.1:8545"
     },
+    jert: {
+      url: process.env.JERT_RPC_URL || "",
+      chainId: process.env.JERT_CHAIN_ID
+        ? Number(process.env.JERT_CHAIN_ID)
+        : undefined,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    }
   },
-
   paths: {
     sources: "./contracts",
     tests: "./test",
     cache: "./cache",
-    artifacts: "./artifacts",
+    artifacts: "./artifacts"
   },
-
   gasReporter: {
-    enabled: true,
-    currency: "USD",
+    enabled: process.env.REPORT_GAS === "true",
+    currency: "USD"
   },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY || ""
+  }
 };
 
 export default config;
