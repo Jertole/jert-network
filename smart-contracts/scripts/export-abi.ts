@@ -1,17 +1,16 @@
 
+
 // scripts/export-abi.ts
 import { promises as fs } from "fs";
 import path from "path";
 import { artifacts } from "hardhat";
 
 async function exportABIs() {
-  // Папка, куда складываем ABI
   const outputDir = path.join(__dirname, "..", "abi");
 
-  // Создаём каталог, если его нет
+  // ✔ Создание директории без ошибки EEXIST
   await fs.mkdir(outputDir, { recursive: true });
 
-  // Список контрактов, ABI которых нужно выгрузить
   const contracts = [
     "ComplianceGateway",
     "JERTToken",
@@ -20,22 +19,22 @@ async function exportABIs() {
   ];
 
   for (const name of contracts) {
+    console.log(`Reading artifact: ${name}`);
     const artifact = await artifacts.readArtifact(name);
-    const abi = artifact.abi;
 
     const filePath = path.join(outputDir, `${name}.json`);
+    await fs.writeFile(filePath, JSON.stringify(artifact.abi, null, 2));
 
-    await fs.writeFile(filePath, JSON.stringify(abi, null, 2), "utf8");
-    console.log(`✅ ABI for ${name} written to ${filePath}`);
+    console.log(`✅ Written ABI: ${filePath}`);
   }
 }
 
 exportABIs()
   .then(() => {
-    console.log("🎉 All ABIs exported successfully.");
+    console.log("🎉 All ABIs exported successfully");
     process.exit(0);
   })
-  .catch((error) => {
-    console.error("❌ Error exporting ABIs:", error);
+  .catch((err) => {
+    console.error("❌ Error exporting ABIs:", err);
     process.exit(1);
   });
