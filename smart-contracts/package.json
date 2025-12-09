@@ -5,10 +5,7 @@
   "private": true,
   "scripts": {
     "compile": "hardhat compile && ts-node scripts/export-abi.ts",
-    "test": "hardhat test"
-      }
-}
-
+    "test": "hardhat test",
     "deploy": "hardhat run scripts/deploy-all.ts --network jert"
   },
   "devDependencies": {
