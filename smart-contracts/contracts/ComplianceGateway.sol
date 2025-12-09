@@ -1,5 +1,4 @@
 
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -18,47 +17,55 @@ interface IKYCRegistry {
 ///   It only reads status flags from KYCRegistry (and similar contracts).
 /// - All actual verification is handled OFF-CHAIN by licensed providers.
 /// - The gateway can be used by other contracts to:
-///   * Require that msg.sender is allowed()
-///   * Enforce access control for specific operations (e.g. leasing, treasury flows).
-/// - The contract must remain generic and upgradable in terms of which registry it uses,
-///   to align with regulatory evolution and AFSA/AIFC requirements.
+///   * Require that msg.sender is allowed before sensitive operations.
+///   * Require that a specific beneficiary address is allowed.
 contract ComplianceGateway is Ownable {
-    /// @notice Current KYC registry used to validate addresses.
+    /// @notice Emitted when the KYC registry address is updated.
+    event KYCRegistryUpdated(address indexed previousRegistry, address indexed newRegistry);
+
+    /// @dev Reference to the external KYCRegistry contract.
     IKYCRegistry public kycRegistry;
 
-    /// @notice Emitted when the KYC registry reference is updated.
-    event KYCRegistryUpdated(address indexed newRegistry);
-
-    /// @notice Deploys the gateway with an initial KYC registry.
-    /// @param initialRegistry Address of the KYCRegistry contract.
-    constructor(address initialRegistry) {
-        require(initialRegistry != address(0), "Gateway: zero registry");
-        kycRegistry = IKYCRegistry(initialRegistry);
-        emit KYCRegistryUpdated(initialRegistry);
+    /// @notice Optional constructor that sets the initial KYC registry.
+    /// @param _kycRegistry Address of the KYC registry (can be zero and set later).
+    constructor(address _kycRegistry) {
+        if (_kycRegistry != address(0)) {
+            kycRegistry = IKYCRegistry(_kycRegistry);
+            emit KYCRegistryUpdated(address(0), _kycRegistry);
+        }
     }
 
-    /// @notice Updates the address of the KYCRegistry.
-    /// @dev Only callable by the owner (governance / compliance operator).
-    /// @param newRegistry Address of the new KYCRegistry contract.
-    function setKYCRegistry(address newRegistry) external onlyOwner {
-        require(newRegistry != address(0), "Gateway: zero registry");
-        kycRegistry = IKYCRegistry(newRegistry);
-        emit KYCRegistryUpdated(newRegistry);
+    /// @notice Updates the address of the KYC registry.
+    /// @dev Only callable by the contract owner.
+    /// @param _kycRegistry New KYC registry contract address.
+    function setKYCRegistry(address _kycRegistry) external onlyOwner {
+        require(_kycRegistry != address(0), "Gateway: zero registry");
+        address previous = address(kycRegistry);
+        kycRegistry = IKYCRegistry(_kycRegistry);
+        emit KYCRegistryUpdated(previous, _kycRegistry);
     }
 
-    /// @notice Reverts if `account` is not allowed according to the KYCRegistry.
-    /// @param account Address to be checked.
-    function requireAllowed(address account) external view {
+    /// @notice Returns true if the given account is allowed according to the registry.
+    /// @param account Address to check.
+    /// @return allowed True if the account is allowed, false otherwise (including when registry is unset).
+    function isAllowed(address account) public view returns (bool allowed) {
+        if (address(kycRegistry) == address(0)) {
+            // Fail closed: if registry is not set, treat everyone as not allowed.
+            return false;
+        }
+        return kycRegistry.isAllowed(account);
+    }
+
+    /// @notice External helper that reverts if msg.sender is not allowed.
+    /// @dev Can be called by frontends or other contracts that need an explicit check.
+    function requireSenderAllowed() external view {
+        _requireAllowed(_msgSender());
+    }
+
+    /// @notice External helper that reverts if the given account is not allowed.
+    /// @param account Address to check.
+    function requireAccountAllowed(address account) external view {
         _requireAllowed(account);
-    }
-
-    /// @notice Returns true if `account` is allowed according to the current KYCRegistry.
-    /// @param account Address to be checked.
-    /// @return allowed True if the address is allowed.
-    function checkAllowed(
-        address account
-    ) external view returns (bool allowed) {
-        allowed = _isAllowed(account);
     }
 
     /// @dev Internal view helper to check permissions.
