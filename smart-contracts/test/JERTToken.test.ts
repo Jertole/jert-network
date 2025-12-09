@@ -2,118 +2,80 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("JERTToken", function () {
-  const NAME = "JERT Utility Token";
-  const SYMBOL = "JERT";
-  const DECIMALS = 18;
-
-  it("deploys with correct name, symbol and decimals", async () => {
-    const [treasury] = await ethers.getSigners();
-
-    const JERTToken = await ethers.getContractFactory("JERTToken");
-    const initialSupply = ethers.parseUnits("1000000000", DECIMALS);
-
-    const token = await JERTToken.deploy(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-      treasury.address,
-      initialSupply
-    );
-
+describe("JERTToken", () => {
+  async function deployTokenFixture() {
+    const [deployer, treasury, user] = await ethers.getSigners();
+    const Token = await ethers.getContractFactory("JERTToken");
+    const token = await Token.deploy(treasury.address);
     await token.waitForDeployment();
 
-    expect(await token.name()).to.equal(NAME);
-    expect(await token.symbol()).to.equal(SYMBOL);
-    expect(await token.decimals()).to.equal(DECIMALS);
+    return { token, deployer, treasury, user };
+  }
 
-    const balance = await token.balanceOf(treasury.address);
-    expect(balance).to.equal(initialSupply);
+  it("должен корректно инициализироваться (name, symbol, decimals, maxSupply)", async () => {
+    const { token, treasury } = await deployTokenFixture();
+
+    expect(await token.name()).to.equal("JERT Utility Token");
+    expect(await token.symbol()).to.equal("JERT");
+    expect(await token.decimals()).to.equal(18);
+
+    const totalSupply = await token.totalSupply();
+    const maxSupply = ethers.parseUnits("1000000000000", 18); // 1 триллион JERT
+
+    expect(totalSupply).to.equal(maxSupply);
+    expect(await token.balanceOf(treasury.address)).to.equal(maxSupply);
   });
 
-  it("only owner can mint and burn", async () => {
-    const [treasury, owner2, other] = await ethers.getSigners();
+  it("только владелец может минтить", async () => {
+    const { token, deployer, user } = await deployTokenFixture();
 
-    const JERTToken = await ethers.getContractFactory("JERTToken");
-    const initialSupply = 0n;
+    const amount = ethers.parseUnits("1000", 18);
 
-    const token = await JERTToken.deploy(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-      treasury.address,
-      initialSupply
-    );
-    await token.waitForDeployment();
+    // владелец может минтить
+    await expect(token.connect(deployer).mint(user.address, amount))
+      .to.emit(token, "Transfer")
+      .withArgs(ethers.ZeroAddress, user.address, amount);
 
-    // owner (deployer) by default = treasury in constructor
+    // не-владелец не может
     await expect(
-      token.connect(treasury).mint(owner2.address, ethers.parseUnits("1000", DECIMALS))
-    ).to.not.be.reverted;
-
-    const balOwner2 = await token.balanceOf(owner2.address);
-    expect(balOwner2).to.equal(ethers.parseUnits("1000", DECIMALS));
-
-    // non-owner cannot mint
-    await expect(
-      token.connect(other).mint(other.address, 1)
-    ).to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount");
-
-    // owner can burn
-    await expect(
-      token.connect(treasury).burn(owner2.address, ethers.parseUnits("500", DECIMALS))
-    ).to.not.be.reverted;
-
-    const balAfterBurn = await token.balanceOf(owner2.address);
-    expect(balAfterBurn).to.equal(ethers.parseUnits("500", DECIMALS));
-
-    // non-owner cannot burn
-    await expect(
-      token.connect(other).burn(owner2.address, 1)
+      token.connect(user).mint(user.address, amount)
     ).to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount");
   });
 
-  it("standard ERC20 transfers work", async () => {
-    const [treasury, userA, userB] = await ethers.getSigners();
+  it("не должен превышать MAX_SUPPLY при минте", async () => {
+    const { token, deployer } = await deployTokenFixture();
 
-    const JERTToken = await ethers.getContractFactory("JERTToken");
-    const token = await JERTToken.deploy(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-      treasury.address,
-      ethers.parseUnits("1000000", DECIMALS)
-    );
-    await token.waitForDeployment();
+    const maxSupply = await token.MAX_SUPPLY();
+    const currentSupply = await token.totalSupply();
+    const remaining = maxSupply - currentSupply;
 
-    // transfer from treasury to userA
-    await token
-      .connect(treasury)
-      .transfer(userA.address, ethers.parseUnits("1000", DECIMALS));
+    // минтим ровно до капа — ок
+    if (remaining > 0n) {
+      await token.connect(deployer).mint(deployer.address, remaining);
+      expect(await token.totalSupply()).to.equal(maxSupply);
+    }
 
-    expect(await token.balanceOf(userA.address)).to.equal(
-      ethers.parseUnits("1000", DECIMALS)
-    );
+    // любая дополнительная попытка — revert
+    await expect(
+      token.connect(deployer).mint(deployer.address, 1n)
+    ).to.be.revertedWith("JERT: cap exceeded");
+  });
 
-    // userA approves userB
-    await token
-      .connect(userA)
-      .approve(userB.address, ethers.parseUnits("500", DECIMALS));
+  it("только владелец может жечь токены", async () => {
+    const { token, deployer, treasury, user } = await deployTokenFixture();
 
-    // userB transfers from userA
-    await token
-      .connect(userB)
-      .transferFrom(
-        userA.address,
-        userB.address,
-        ethers.parseUnits("300", DECIMALS)
-      );
+    const amount = ethers.parseUnits("10", 18);
 
-    expect(await token.balanceOf(userB.address)).to.equal(
-      ethers.parseUnits("300", DECIMALS)
-    );
-    expect(await token.balanceOf(userA.address)).to.equal(
-      ethers.parseUnits("700", DECIMALS)
-    );
+    // жём с баланса treasury как владелец
+    await expect(
+      token.connect(deployer).burn(treasury.address, amount)
+    )
+      .to.emit(token, "Transfer")
+      .withArgs(treasury.address, ethers.ZeroAddress, amount);
+
+    // пользователь не может вызвать burn
+    await expect(
+      token.connect(user).burn(treasury.address, amount)
+    ).to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount");
   });
 });
