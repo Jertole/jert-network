@@ -8,6 +8,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+   
+  cupertino_icons: ^1.0.8
+
+  # EVM + HTTP
+  web3dart: ^2.7.2
+  http: ^1.2.2
+
+  # Хранение приватного ключа и настроек
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.2
+
+  # QR-код для экрана Receive
+  qr_flutter: ^4.1.0
+
+  # Форматирование чисел
+  intl: ^0.19.0 
 
   http: ^1.1.0
   shared_preferences: ^2.2.2
