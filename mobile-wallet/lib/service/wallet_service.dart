@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +21,18 @@ class WalletService {
   Future<bool> hasWallet() async {
     final pk = await _storage.read(key: _pkKey);
     return pk != null && pk.isNotEmpty;
+  }
+
+  /// Есть ли установленный PIN
+  Future<bool> hasPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_pinKey);
+    return stored != null && stored.isNotEmpty;
+  }
+
+  /// Установить / обновить PIN
+  Future<void> setPin(String pin) async {
+    await _savePin(pin);
   }
 
   /// Создать новый кошелёк (генерирует приватный ключ)
@@ -96,7 +107,7 @@ class WalletService {
     return result.first as BigInt;
   }
 
-  /// Отправка JERT (пока без gas-tuning, базовый вариант)
+  /// Отправка JERT
   Future<String> sendJert({
     required String to,
     required BigInt amount,
@@ -131,7 +142,7 @@ class WalletService {
     return txHash;
   }
 
-  /// Отправка "голого" ETH (для оплаты газа или простых трансферов)
+  /// Отправка "голого" ETH
   Future<String> sendEth({
     required String to,
     required EtherAmount amount,
@@ -158,15 +169,12 @@ class WalletService {
     return txHash;
   }
 
-  /// Заглушка — пока история транзакций не реализована
+  /// Заглушка — история транзакций
   Future<List<Map<String, dynamic>>> getTransactionHistory() async {
-    // Здесь позже подключим:
-    // - собственный Explorer / API Gateway
-    // - или прямое чтение логов Transfer() по JERT
     return [];
   }
 
-  /// ABI JERTToken (минимальный: name, symbol, decimals, balanceOf, transfer)
+  /// Минимальный ABI JERTToken
   static const String _jertAbiJson = '''
   [
     {
