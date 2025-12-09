@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,25 +18,25 @@ class WalletService {
 
   Web3Client get client => _client;
 
-  /// Проверка — уже создан кошелёк или нет
+  /// Уже есть кошелёк?
   Future<bool> hasWallet() async {
     final pk = await _storage.read(key: _pkKey);
     return pk != null && pk.isNotEmpty;
   }
 
-  /// Есть ли установленный PIN
+  /// Есть ли PIN?
   Future<bool> hasPin() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_pinKey);
     return stored != null && stored.isNotEmpty;
   }
 
-  /// Установить / обновить PIN
+  /// Установить / сменить PIN
   Future<void> setPin(String pin) async {
     await _savePin(pin);
   }
 
-  /// Создать новый кошелёк (генерирует приватный ключ)
+  /// Создать кошелёк
   Future<EthereumAddress> createWallet({String? pin}) async {
     final creds = EthPrivateKey.createRandom();
     final pkHex = bytesToHex(creds.privateKey, include0x: true);
@@ -48,7 +49,7 @@ class WalletService {
     return creds.address;
   }
 
-  /// Импорт существующего приватного ключа (0x...)
+  /// Импорт кошелька
   Future<EthereumAddress> importWallet(String privateKey, {String? pin}) async {
     final pkTrimmed = privateKey.trim();
     if (!pkTrimmed.startsWith('0x') || pkTrimmed.length < 10) {
@@ -76,7 +77,7 @@ class WalletService {
     return stored != null && stored == pin;
   }
 
-  /// Получить адрес кошелька (из приватного ключа)
+  /// Адрес кошелька
   Future<EthereumAddress?> getAddress() async {
     final pk = await _storage.read(key: _pkKey);
     if (pk == null) return null;
@@ -142,7 +143,7 @@ class WalletService {
     return txHash;
   }
 
-  /// Отправка "голого" ETH
+  /// Отправка ETH
   Future<String> sendEth({
     required String to,
     required EtherAmount amount,
@@ -169,9 +170,28 @@ class WalletService {
     return txHash;
   }
 
-  /// Заглушка — история транзакций
+  /// История транзакций через API Gateway
   Future<List<Map<String, dynamic>>> getTransactionHistory() async {
-    return [];
+    final addr = await getAddress();
+    if (addr == null) return [];
+
+    final addrStr = addr.toString();
+    final uri = Uri.parse('$jertApiBaseUrl/tx/history?address=$addrStr');
+
+    final resp = await http.get(uri, headers: {
+      'Accept': 'application/json',
+    });
+
+    if (resp.statusCode != 200) {
+      return [];
+    }
+
+    final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+    final raw = decoded['items'] as List<dynamic>? ?? [];
+
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .toList();
   }
 
   /// Минимальный ABI JERTToken
