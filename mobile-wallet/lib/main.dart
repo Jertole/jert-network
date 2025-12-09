@@ -33,7 +33,7 @@ class JertWalletApp extends StatelessWidget {
   }
 }
 
-/// SPLASH: проверяем, есть ли уже кошелёк
+/// SPLASH: проверяем кошелёк + PIN
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -54,13 +54,31 @@ class _SplashScreenState extends State<SplashScreen> {
     final hasWallet = await _walletService.hasWallet();
     if (!mounted) return;
 
-    if (hasWallet) {
+    if (!hasWallet) {
+      // нет кошелька → onboarding
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => HomeScreen(walletService: _walletService)),
+        MaterialPageRoute(
+          builder: (_) => OnboardingScreen(walletService: _walletService),
+        ),
+      );
+      return;
+    }
+
+    // кошелёк есть → проверяем PIN
+    final hasPin = await _walletService.hasPin();
+    if (!mounted) return;
+
+    if (hasPin) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => PinUnlockScreen(walletService: _walletService),
+        ),
       );
     } else {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => OnboardingScreen(walletService: _walletService)),
+        MaterialPageRoute(
+          builder: (_) => HomeScreen(walletService: _walletService),
+        ),
       );
     }
   }
@@ -75,7 +93,113 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-/// ONBOARDING: создать / импортировать кошелёк
+/// PIN Unlock: двухфакторная защита входа
+class PinUnlockScreen extends StatefulWidget {
+  final WalletService walletService;
+  const PinUnlockScreen({super.key, required this.walletService});
+
+  @override
+  State<PinUnlockScreen> createState() => _PinUnlockScreenState();
+}
+
+class _PinUnlockScreenState extends State<PinUnlockScreen> {
+  final _pinController = TextEditingController();
+  int _attemptsLeft = 5;
+  bool _verifying = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _verifyPin() async {
+    setState(() {
+      _verifying = true;
+      _error = null;
+    });
+
+    final ok = await widget.walletService.verifyPin(_pinController.text);
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => HomeScreen(walletService: widget.walletService),
+        ),
+      );
+    } else {
+      setState(() {
+        _attemptsLeft -= 1;
+        _verifying = false;
+        _error = _attemptsLeft > 0
+            ? 'Wrong PIN. Attempts left: $_attemptsLeft'
+            : 'Too many failed attempts. Restart the app.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final blocked = _attemptsLeft <= 0;
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 32),
+              const Text(
+                "Unlock JERT Wallet",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Enter your PIN to access wallet.",
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _pinController,
+                decoration: const InputDecoration(
+                  labelText: "PIN",
+                  border: OutlineInputBorder(),
+                ),
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                enabled: !blocked,
+              ),
+              const SizedBox(height: 8),
+              if (_error != null)
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: blocked || _verifying ? null : _verifyPin,
+                  child: _verifying
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text("Unlock"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// ONBOARDING: создать / импортировать кошелёк + сразу установить PIN (опционально)
 class OnboardingScreen extends StatefulWidget {
   final WalletService walletService;
   const OnboardingScreen({super.key, required this.walletService});
@@ -99,7 +223,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _createWallet() async {
     setState(() => _creating = true);
     try {
-      final addr = await widget.walletService.createWallet(pin: _pinController.text);
+      await widget.walletService.createWallet(pin: _pinController.text);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -164,7 +288,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               TextField(
                 controller: _pinController,
                 decoration: const InputDecoration(
-                  labelText: "PIN (optional)",
+                  labelText: "PIN (optional, used for 2FA)",
                   border: OutlineInputBorder(),
                 ),
                 obscureText: true,
@@ -214,7 +338,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-/// HOME: баланс + навигация Send / Receive / Settings
+/// HOME: баланс + навигация Send / Receive
 class HomeScreen extends StatefulWidget {
   final WalletService walletService;
   const HomeScreen({super.key, required this.walletService});
@@ -284,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Card(
+            Card,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -414,7 +538,7 @@ class ReceiveScreen extends StatelessWidget {
   }
 }
 
-/// SEND: форма отправки JERT (пока только JERT)
+/// SEND: форма отправки JERT с проверкой PIN (2FA)
 class SendScreen extends StatefulWidget {
   final WalletService walletService;
   final EthereumAddress from;
@@ -441,7 +565,108 @@ class _SendScreenState extends State<SendScreen> {
     super.dispose();
   }
 
+  Future<bool> _checkPin2FA() async {
+    final hasPin = await widget.walletService.hasPin();
+    if (!hasPin) {
+      // PIN не установлен — пропускаем 2FA
+      return true;
+    }
+
+    final controller = TextEditingController();
+    bool success = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        bool verifying = false;
+        String? error;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> verify() async {
+              setState(() {
+                verifying = true;
+                error = null;
+              });
+              final ok = await widget.walletService.verifyPin(controller.text);
+              if (!mounted) return;
+              if (ok) {
+                success = true;
+                Navigator.of(context).pop();
+              } else {
+                setState(() {
+                  verifying = false;
+                  error = "Wrong PIN";
+                });
+              }
+            }
+
+            return AlertDialog(
+              title: const Text("Confirm with PIN"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Enter your PIN to confirm this transaction.",
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: "PIN",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      error!,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: verifying
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                        },
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: verifying ? null : verify,
+                  child: verifying
+                      ? const SizedBox(
+                          height: 14,
+                          width: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text("Confirm"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return success;
+  }
+
   Future<void> _send() async {
+    // сначала — 2FA PIN
+    final allowed = await _checkPin2FA();
+    if (!allowed) return;
+
     setState(() => _sending = true);
     try {
       final to = _toController.text.trim();
