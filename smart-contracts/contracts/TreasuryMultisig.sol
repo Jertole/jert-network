@@ -109,6 +109,11 @@ contract TreasuryMultisig {
         return owners.length;
     }
 
+/// @notice Returns total number of submitted transactions.
+    function getTransactionCount() external view returns (uint256) {
+        return transactions.length;
+    }
+
     /// @notice Submits and confirms a new transaction in a single call.
     /// @param destination Recipient address.
     /// @param value ETH value to send.
