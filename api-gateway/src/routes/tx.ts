@@ -1,57 +1,48 @@
 
 import { Router, Request, Response } from "express";
 import { ethers } from "ethers";
-import { getProvider } from "../config"; 
+import { getProvider } from "../config";
+import { kycCheck } from "../../compliance-middleware/kyc-check";
+import { amlCheck } from "../../compliance-middleware/aml-check";
 
 export const txRouter = Router();
 
-const provider: ethers.JsonRpcProvider = getProvider();
+const provider = getProvider();
 
 /**
- * GET /tx/history?address=0x...
+ * GET /api/tx/history?address=0x...
+ * Пока заглушка: возвращает пустой список, но формат уже фиксированный.
  */
 txRouter.get("/history", async (req: Request, res: Response) => {
   try {
-    const address = req.query.address as string | undefined;
+    const address = (req.query.address as string | undefined)?.trim();
 
     if (!address || !ethers.isAddress(address)) {
       return res.status(400).json({ error: "invalid_address" });
     }
 
-    // Placeholder — real history requires DB/indexer
-    const history: any[] = [];
-
-    return res.json({ address, history });
-  } catch (err) {
+    // TODO: здесь позже можно построить реальный поиск по блокам / логам
+    // Сейчас просто возвращаем пустой массив.
+    return res.json({
+      address,
+      items: [] as any[],
+    });
+  } catch (err: any) {
     console.error("Error in /tx/history:", err);
-    return res.status(500).json({ error: "internal_error" });
+    return res.status(500).json({
+      error: "history_failed",
+      details: err?.message || String(err),
+    });
   }
 });
 
 /**
- * POST /tx/send
+ * POST /api/tx/send
+ * На шлюзе отправку держим выключенной — подпись должна быть в кошельке.
  */
-txRouter.post("/send", async (req: Request, res: Response) => {
-  try {
-    const { rawTx } = req.body;
-
-    if (!rawTx || typeof rawTx !== "string") {
-      return res.status(400).json({ error: "missing_rawTx" });
-    }
-
-    const txResponse = await provider.sendTransaction(rawTx);
-    const receipt = await txResponse.wait(1);
-
-    return res.json({
-      hash: txResponse.hash,
-      blockNumber: receipt?.blockNumber,
-      status: receipt?.status,
-    });
-  } catch (err: any) {
-    console.error("Error in /tx/send:", err);
-    return res.status(500).json({
-      error: "tx_send_failed",
-      details: err?.message || String(err),
-    });
-  }
+txRouter.post("/send", kycCheck, amlCheck, async (_req: Request, res: Response) => {
+  return res.status(501).json({
+    error: "tx_send_disabled",
+    message: "Signing must be done in client wallet (JERT Wallet / Corporate Wallet).",
+  });
 });
