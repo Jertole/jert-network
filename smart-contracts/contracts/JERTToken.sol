@@ -4,25 +4,31 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title JERT Utility Token
-/// @notice Базовый ERC20-токен для экосистемы JERT.
-/// @dev Собственник (owner) получает весь initialSupply и может минтить/жечь токены.
+/// @title JERTToken
+/// @notice ERC20-токен с максимальной эмиссией и минтом только для владельца
 contract JERTToken is ERC20, Ownable {
-    /// @notice Конструктор без аргументов для удобства деплоя из скриптов.
-    /// Имя и символ зашиты в контракт, владелец = msg.sender.
-    constructor() ERC20("JERT Token", "JERT") Ownable(msg.sender) {
-        // При желании можно изменить initial supply
-        uint256 initialSupply = 1_000_000_000 * 10 ** decimals(); // 1e9 JERT
-        _mint(msg.sender, initialSupply);
+    /// @notice Максимальное количество токенов (с учётом decimals = 18)
+    uint256 public constant MAX_SUPPLY = 1_000_000_000 ether; // 1 млрд JERT
+
+    constructor(address treasury) ERC20("JERT Token", "JERT") {
+        // Минтим всю эмиссию на адрес казначейства
+        _mint(treasury, MAX_SUPPLY);
+
+        // Делаем treasury владельцем контракта
+        _transferOwnership(treasury);
     }
 
-    /// @notice Минт дополнительных токенов на указанный адрес.
+    /// @notice Минт доступен только владельцу и не может превышать MAX_SUPPLY
     function mint(address to, uint256 amount) external onlyOwner {
+        require(
+            totalSupply() + amount <= MAX_SUPPLY,
+            "JERT: MAX_SUPPLY exceeded"
+        );
         _mint(to, amount);
     }
 
-    /// @notice Сжигание токенов с собственного баланса.
-    function burn(uint256 amount) external {
-        _burn(msg.sender, amount);
+    /// @notice Владелец может сжигать свои токены
+    function burn(uint256 amount) external onlyOwner {
+        _burn(_msgSender(), amount);
     }
 }
