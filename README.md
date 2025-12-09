@@ -1,8 +1,25 @@
-# jert-network
+# Jert-network
 
-JERT Network Monorepo — инфраструктура для JERT Permissioned EVM Network,
-поддерживаемой Cryogas Kazakhstan, Vitlax Nordic AB (Sweden) и SY Power Energy (Switzerland)
-в рамках стратегии **“Building the Green Cold Energy Network across Eurasia”**.
+JERT Network Monorepo
+Non-custodial, permissioned EVM infrastructure for the **JERT token** and the
+**Green Cold Energy / Cryogas** ecosystem.
+
+This repository contains:
+
+- `smart-contracts/` – Solidity contracts (JERT token, KYC/AML, Multisig treasury, Lease contracts) + Hardhat tests.
+- `corporate-wallet/` – React-based **JERT Treasury / Multisig dashboard**.
+- `api-gateway/` – Node.js (TypeScript) API gateway (compliance, energy oracle, wallet balance, tx stubs).
+- `flutter-wallet/` – Android/iOS **JERT Wallet** (non-custodial, PIN-protected, 2FA for sends).
+- 
+## 1. Repository structure
+
+jert-network/
+  smart-contracts/       # Hardhat, Solidity contracts, tests
+  corporate-wallet/      # React (Vite) multisig UI
+  api-gateway/           # Express + ethers API gateway
+  flutter-wallet/        # Flutter JERT mobile wallet
+  docs/
+    PROJECT_ROADMAP.md   # High-level roadmap & status
 
 ## USD & Energy-Denominated Utility
 
