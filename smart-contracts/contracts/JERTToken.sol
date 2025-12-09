@@ -1,4 +1,4 @@
-/ SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -14,49 +14,36 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 /// - USD valuation and the energy-denominated model (e.g. 100 JERT = 1 MWh, 1000 JERT = 1 MWh-cold)
 ///   are defined and executed OFF-CHAIN by the JERT Energy Oracle and API Gateway.
 /// - This contract MUST NOT implement any on-chain logic that pegs, guarantees, or redeems JERT
-///   to USD, MWh, or any other measurement unit.
-/// - Supply, minting policies and access control MUST follow the governance rules approved
-///   by Cryogas Kazakhstan, Vitlax Nordic AB and SY Power Energy.
+///   into fiat or energy units.
+/// - Minting and burning are restricted to the owner (treasury / governance).
 contract JERTToken is ERC20, Ownable {
-    /// @dev Custom decimals for the token, stored as immutable.
-    uint8 private immutable _customDecimals;
+    uint8 private constant _DECIMALS = 18;
 
-    /// @notice Deploys the JERT token.
-    /// @dev The deployer becomes the initial owner (see Ownable) and can later transfer ownership
-    ///      to a TreasuryMultisig or any other governance contract.
-    /// @param name_ Token name, e.g. "JERT Utility Token".
-    /// @param symbol_ Token symbol, e.g. "JERT".
-    /// @param decimals_ Number of decimals (commonly 18).
-    /// @param initialTreasury Address that receives the initial supply (can be a multisig).
-    /// @param initialSupply Initial supply to mint, in smallest units (respecting decimals).
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_,
-        address initialTreasury,
-        uint256 initialSupply
-    ) ERC20(name_, symbol_) {
-        require(initialTreasury != address(0), "JERT: treasury is zero");
-        _customDecimals = decimals_;
+    /// @notice Maximum token supply in the smallest units (wei-style).
+    /// @dev 1_000_000_000_000 * 10^18 = 1 trillion JERT with 18 decimals.
+    uint256 public constant MAX_SUPPLY = 1_000_000_000_000 * 10 ** uint256(_DECIMALS);
 
-        if (initialSupply > 0) {
-            _mint(initialTreasury, initialSupply);
-        }
+    /// @notice Constructs the JERT token and mints the full MAX_SUPPLY to the treasury.
+    /// @param treasury Address of the treasury (typically the multisig) that receives the initial supply.
+    constructor(address treasury) ERC20("JERT Utility Token", "JERT") {
+        require(treasury != address(0), "JERT: zero treasury");
+        _mint(treasury, MAX_SUPPLY);
+        _transferOwnership(_msgSender());
     }
 
-    /// @notice Returns the number of decimals used by the token.
-    /// @dev Used by off-chain systems to convert on-chain units into human-readable JERT amounts.
-    function decimals() public view override returns (uint8) {
-        return _customDecimals;
+    /// @inheritdoc ERC20
+    function decimals() public pure override returns (uint8) {
+        return _DECIMALS;
     }
 
-    /// @notice Mints new JERT tokens to a specified address.
-    /// @dev Only callable by the contract owner (governance / treasury).
-    ///      This function does not implement any pricing or energy logic.
+    /// @notice Mints additional JERT tokens to a specified address.
+    /// @dev Only callable by the contract owner. Minting cannot exceed MAX_SUPPLY.
+    ///      Intended for controlled issuance (e.g. bridging or technical adjustments).
     /// @param to Recipient address.
-    /// @param amount Amount to mint, in smallest units (respecting decimals()).
+    /// @param amount Amount to mint, in smallest units.
     function mint(address to, uint256 amount) external onlyOwner {
         require(to != address(0), "JERT: mint to zero");
+        require(totalSupply() + amount <= MAX_SUPPLY, "JERT: cap exceeded");
         _mint(to, amount);
     }
 
