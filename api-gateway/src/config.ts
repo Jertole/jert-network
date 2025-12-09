@@ -40,4 +40,6 @@ export function getJertContract(provider?: ethers.Provider) {
  */
 export async function getJertUsdPrice(): Promise<number> {
   const hardcoded = process.env.JERT_PRICE_USD;
-  if
+  if (hardcoded) return Number(hardcoded);
+  return 0.1; // 0.10 USD за JERT по умолчанию
+}
