@@ -1,3 +1,4 @@
+
 import { ethers } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
@@ -19,75 +20,56 @@ async function main() {
   const kycAddress = await kycRegistry.getAddress();
   console.log("KYCRegistry deployed at:", kycAddress);
 
-  // --- 2. Deploy ComplianceGateway with KYCRegistry address ---
-  const ComplianceGateway = await ethers.getContractFactory(
-    "ComplianceGateway"
-  );
-  const complianceGateway = await ComplianceGateway.deploy(kycAddress);
-  await complianceGateway.waitForDeployment();
-  const gatewayAddress = await complianceGateway.getAddress();
+  // --- 2. Deploy ComplianceGateway ---
+  const ComplianceGateway = await ethers.getContractFactory("ComplianceGateway");
+  const gateway = await ComplianceGateway.deploy(kycAddress);
+  await gateway.waitForDeployment();
+  const gatewayAddress = await gateway.getAddress();
   console.log("ComplianceGateway deployed at:", gatewayAddress);
 
-  // --- 3. Deploy TreasuryMultisig (3-of-3, using ownerA, ownerB, ownerC) ---
+  // --- 3. Deploy TreasuryMultisig ---
   const owners = [ownerA.address, ownerB.address, ownerC.address];
-  const threshold = 3;
-
-  const TreasuryMultisig = await ethers.getContractFactory(
-    "TreasuryMultisig"
-  );
-  const treasuryMultisig = await TreasuryMultisig.deploy(owners, threshold);
-  await treasuryMultisig.waitForDeployment();
-  const treasuryAddress = await treasuryMultisig.getAddress();
+  const requiredConfirmations = 3;
+  const TreasuryMultisig = await ethers.getContractFactory("TreasuryMultisig");
+  const treasury = await TreasuryMultisig.deploy(owners, requiredConfirmations);
+  await treasury.waitForDeployment();
+  const treasuryAddress = await treasury.getAddress();
   console.log("TreasuryMultisig deployed at:", treasuryAddress);
 
-  // --- 4. Deploy JERTToken with TreasuryMultisig as initialTreasury ---
+  // --- 4. Deploy JERTToken ---
   const JERTToken = await ethers.getContractFactory("JERTToken");
-
-  const name = "JERT Utility Token";
-  const symbol = "JERT";
-  const decimals = 18;
-
-  // Example: 1 billion JERT with 18 decimals
-  const initialSupply = ethers.parseUnits("1000000000", decimals);
-
-  const jertToken = await JERTToken.deploy(
-    name,
-    symbol,
-    decimals,
-    treasuryAddress,
-    initialSupply
-  );
-  await jertToken.waitForDeployment();
-  const jertAddress = await jertToken.getAddress();
+  const token = await JERTToken.deploy(treasuryAddress);
+  await token.waitForDeployment();
+  const jertAddress = await token.getAddress();
   console.log("JERTToken deployed at:", jertAddress);
 
   // --- 5. Deploy LeaseContract ---
   const LeaseContract = await ethers.getContractFactory("LeaseContract");
-  const leaseContract = await LeaseContract.deploy();
-  await leaseContract.waitForDeployment();
-  const leaseAddress = await leaseContract.getAddress();
+  const lease = await LeaseContract.deploy();
+  await lease.waitForDeployment();
+  const leaseAddress = await lease.getAddress();
   console.log("LeaseContract deployed at:", leaseAddress);
 
-  // --- 6. Build JSON with addresses ---
-  const addresses = {
-    network: "jert-local",
-    chainId: 7777,
-    JERTToken: jertAddress,
-    TreasuryMultisig: treasuryAddress,
-    KYCRegistry: kycAddress,
-    ComplianceGateway: gatewayAddress,
-    LeaseContract: leaseAddress,
-    updatedAt: new Date().toISOString(),
-  };
-
-  // Путь к ../../docs/contract-addresses.json (из smart-contracts/scripts)
-  const outPath = path.join(__dirname, "..", "..", "docs", "contract-addresses.json");
-
-  // Убедимся, что папка docs существует
-  const outDir = path.dirname(outPath);
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
+  // --- 6. Save addresses to deployments/addresses.json ---
+  const rootDir = path.join(__dirname, "..");
+  const deploymentsDir = path.join(rootDir, "deployments");
+  if (!fs.existsSync(deploymentsDir)) {
+    fs.mkdirSync(deploymentsDir, { recursive: true });
   }
+
+  const outPath = path.join(deploymentsDir, "addresses.json");
+  const addresses = {
+    network: (await ethers.provider.getNetwork()).chainId.toString(),
+    deployer: deployer.address,
+    owners,
+    contracts: {
+      JERTToken: jertAddress,
+      TreasuryMultisig: treasuryAddress,
+      KYCRegistry: kycAddress,
+      ComplianceGateway: gatewayAddress,
+      LeaseContract: leaseAddress
+    }
+  };
 
   fs.writeFileSync(outPath, JSON.stringify(addresses, null, 2), "utf-8");
   console.log("\n📄 Saved contract addresses to:", outPath);
@@ -101,5 +83,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error
---
+  console.error(error);
+  process.exitCode = 1;
+});
