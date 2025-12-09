@@ -1,109 +1,124 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("TreasuryMultisig", function () {
-  async function deployMultisig() {
-    const [deployer, ownerA, ownerB, ownerC, recipient] =
+describe("TreasuryMultisig", () => {
+  async function deployFixture() {
+    const [ownerA, ownerB, ownerC, nonOwner, recipient] =
       await ethers.getSigners();
 
-    const TreasuryMultisig = await ethers.getContractFactory(
-      "TreasuryMultisig"
-    );
     const owners = [ownerA.address, ownerB.address, ownerC.address];
-    const threshold = 3;
+    const required = 2; // 2-of-3 для теста
 
-    const multisig = await TreasuryMultisig.deploy(owners, threshold);
+    const Multi = await ethers.getContractFactory("TreasuryMultisig");
+    const multisig = await Multi.deploy(owners, required);
     await multisig.waitForDeployment();
 
-    return { deployer, ownerA, ownerB, ownerC, recipient, multisig };
+    return { multisig, ownerA, ownerB, ownerC, nonOwner, recipient };
   }
 
-  it("deploys with correct owners and threshold", async () => {
-    const { ownerA, ownerB, ownerC, multisig } = await deployMultisig();
+  it("инициализируется с нужными владельцами и threshold", async () => {
+    const { multisig, ownerA, ownerB, ownerC } = await deployFixture();
 
-    const owners = await multisig.getOwners();
-    expect(owners).to.deep.equal([ownerA.address, ownerB.address, ownerC.address]);
+    expect(await multisig.isOwner(ownerA.address)).to.equal(true);
+    expect(await multisig.isOwner(ownerB.address)).to.equal(true);
+    expect(await multisig.isOwner(ownerC.address)).to.equal(true);
+    expect(await multisig.getOwnersCount()).to.equal(3n);
 
-    const threshold = await multisig.getThreshold();
-    expect(threshold).to.equal(3);
+    const required = await multisig.required();
+    expect(required).to.equal(2n);
   });
 
-  it("requires owner for submit/confirm/execute", async () => {
-    const { multisig, recipient, ownerA } = await deployMultisig();
-    const [, , , , outsider] = await ethers.getSigners();
+  it("депозит ETH увеличивает баланс и эмитит событие", async () => {
+    const { multisig, ownerA } = await deployFixture();
 
-    const data = "0x";
-    const value = 0;
-
-    // outsider cannot submit
     await expect(
-      multisig.connect(outsider).submitTransaction(recipient.address, value, data)
-    ).to.be.revertedWith("Multisig: caller not owner");
+      ownerA.sendTransaction({
+        to: await multisig.getAddress(),
+        value: ethers.parseEther("1.0")
+      })
+    )
+      .to.emit(multisig, "Deposit")
+      .withArgs(ownerA.address, ethers.parseEther("1.0"));
 
-    // owner can submit
-    await expect(
-      multisig.connect(ownerA).submitTransaction(recipient.address, value, data)
-    ).to.not.be.reverted;
+    const balance = await ethers.provider.getBalance(
+      await multisig.getAddress()
+    );
+    expect(balance).to.equal(ethers.parseEther("1.0"));
   });
 
-  it("executes transaction only after enough confirmations (3/3)", async () => {
-    const { multisig, ownerA, ownerB, ownerC, recipient } =
-      await deployMultisig();
+  it("non-owner не может создавать транзакции", async () => {
+    const { multisig, nonOwner } = await deployFixture();
 
-    const txValue = ethers.parseEther("1.0");
+    await expect(
+      multisig
+        .connect(nonOwner)
+        .submitTransaction(nonOwner.address, 0, "0x")
+    ).to.be.revertedWith("Multisig: not owner");
+  });
 
-    // send ETH to multisig
-    const [fundingAccount] = await ethers.getSigners();
-    await fundingAccount.sendTransaction({
+  it("2-of-3 подтверждения достаточно для исполнения транзакции", async () => {
+    const { multisig, ownerA, ownerB, recipient } = await deployFixture();
+
+    // закинем ETH в multisig
+    await ownerA.sendTransaction({
       to: await multisig.getAddress(),
-      value: txValue,
+      value: ethers.parseEther("2")
     });
 
-    // create tx by ownerA
+    const recipientStart = await ethers.provider.getBalance(recipient.address);
+
+    // submitTransaction от ownerA (автоматически подтверждает 1 раз)
+    const txValue = ethers.parseEther("1");
+    const txData = "0x";
+
     const submitTx = await multisig
       .connect(ownerA)
-      .submitTransaction(recipient.address, txValue, "0x");
+      .submitTransaction(recipient.address, txValue, txData);
+
     const receipt = await submitTx.wait();
-    const event = receipt!.logs.find(
-      (l: any) => l.fragment && l.fragment.name === "Submission"
+    const submissionEvent = receipt!.logs.find(
+      (l) => (l as any).fragment?.name === "Submission"
     );
-    const txId = event?.args?.txId ?? 0n;
+    const txId = submissionEvent
+      ? (submissionEvent as any).args[0]
+      : undefined;
 
-    // confirm by ownerB
-    await multisig.connect(ownerB).confirmTransaction(txId);
-    // confirm by ownerC -> triggers execution because threshold=3
-    await multisig.connect(ownerC).confirmTransaction(txId);
+    expect(txId).to.not.equal(undefined);
 
-    const balanceRecipient = await ethers.provider.getBalance(recipient.address);
-    expect(balanceRecipient).to.be.greaterThan(0);
+    // ownerB даёт второе подтверждение → должно привести к выполнению
+    await expect(
+      multisig.connect(ownerB).confirmTransaction(txId)
+    ).to.emit(multisig, "Execution");
+
+    const recipientEnd = await ethers.provider.getBalance(recipient.address);
+    expect(recipientEnd - recipientStart).to.equal(txValue);
   });
 
-  it("allows revoke before execution", async () => {
-    const { multisig, ownerA, ownerB, ownerC, recipient } =
-      await deployMultisig();
+  it("нельзя выполнить транзакцию без достаточных подтверждений", async () => {
+    const { multisig, ownerA, recipient } = await deployFixture();
+
+    await ownerA.sendTransaction({
+      to: await multisig.getAddress(),
+      value: ethers.parseEther("1")
+    });
 
     const txValue = ethers.parseEther("0.5");
 
-    const [fundingAccount] = await ethers.getSigners();
-    await fundingAccount.sendTransaction({
-      to: await multisig.getAddress(),
-      value: txValue,
-    });
-
     const submitTx = await multisig
       .connect(ownerA)
       .submitTransaction(recipient.address, txValue, "0x");
+
     const receipt = await submitTx.wait();
-    const event = receipt!.logs.find(
-      (l: any) => l.fragment && l.fragment.name === "Submission"
+    const submissionEvent = receipt!.logs.find(
+      (l) => (l as any).fragment?.name === "Submission"
     );
-    const txId = event?.args?.txId ?? 0n;
+    const txId = submissionEvent
+      ? (submissionEvent as any).args[0]
+      : undefined;
 
-    await multisig.connect(ownerB).confirmTransaction(txId);
-
-    // ownerB can revoke before execution
+    // попытка принудительно execute при 1 подтверждении
     await expect(
-      multisig.connect(ownerB).revokeConfirmation(txId)
-    ).to.not.be.reverted;
+      multisig.connect(ownerA).executeTransaction(txId)
+    ).to.be.revertedWith("Multisig: not enough confirmations");
   });
 });
