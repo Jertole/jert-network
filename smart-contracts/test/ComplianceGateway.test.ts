@@ -1,61 +1,57 @@
+
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("ComplianceGateway", function () {
-  it("checks KYC registry and blocks non-allowed accounts", async () => {
-    const [owner, userAllowed, userBlocked] = await ethers.getSigners();
+describe("ComplianceGateway", () => {
+  async function deployFixture() {
+    const [owner, user] = await ethers.getSigners();
 
-    const KYCRegistry = await ethers.getContractFactory("KYCRegistry");
-    const registry = await KYCRegistry.deploy();
-    await registry.waitForDeployment();
+    const KYC = await ethers.getContractFactory("KYCRegistry");
+    const kyc = await KYC.deploy();
+    await kyc.waitForDeployment();
 
-    const ComplianceGateway = await ethers.getContractFactory(
-      "ComplianceGateway"
-    );
-    const gateway = await ComplianceGateway.deploy(await registry.getAddress());
+    const Gateway = await ethers.getContractFactory("ComplianceGateway");
+    const gateway = await Gateway.deploy(await kyc.getAddress());
     await gateway.waitForDeployment();
 
-    // initially all false
-    expect(await gateway.checkAllowed(userAllowed.address)).to.equal(false);
+    return { owner, user, kyc, gateway };
+  }
 
-    // mark userAllowed as allowed
-    await registry.connect(owner).setAllowed(userAllowed.address, true);
+  it("по умолчанию пользователь не разрешён", async () => {
+    const { user, gateway } = await deployFixture();
 
-    expect(await gateway.checkAllowed(userAllowed.address)).to.equal(true);
-    expect(await gateway.checkAllowed(userBlocked.address)).to.equal(false);
+    expect(await gateway.isAllowed(user.address)).to.equal(false);
 
-    // requireAllowed should revert for blocked user
+    await expect(gateway.requireSenderAllowed()).to.be.revertedWith(
+      "Gateway: account not allowed"
+    );
+
     await expect(
-      gateway.requireAllowed(userBlocked.address)
+      gateway.requireAccountAllowed(user.address)
     ).to.be.revertedWith("Gateway: account not allowed");
   });
 
-  it("only owner can update KYC registry address", async () => {
-    const [owner, newRegistry, outsider] = await ethers.getSigners();
+  it("после KYC-аппрува пользователь становится allowed", async () => {
+    const { owner, user, kyc, gateway } = await deployFixture();
 
-    const KYCRegistry = await ethers.getContractFactory("KYCRegistry");
-    const registry = await KYCRegistry.deploy();
-    await registry.waitForDeployment();
+    // owner KYCRegistry == deployer контракта
+    await kyc.connect(owner).setKYCStatus(user.address, true);
 
-    const ComplianceGateway = await ethers.getContractFactory(
-      "ComplianceGateway"
-    );
-    const gateway = await ComplianceGateway.deploy(await registry.getAddress());
-    await gateway.waitForDeployment();
+    expect(await gateway.isAllowed(user.address)).to.equal(true);
 
-    await expect(
-      gateway
-        .connect(outsider)
-        .setKYCRegistry(newRegistry.address)
-    ).to.be.revertedWithCustomError(
-      gateway,
-      "OwnableUnauthorizedAccount"
-    );
+    // requireAccountAllowed теперь не должен падать
+    await gateway.requireAccountAllowed(user.address);
+  });
+
+  it("смена адреса KYCRegistry доступна только владельцу", async () => {
+    const { gateway, user } = await deployFixture();
+
+    const KYC2 = await ethers.getContractFactory("KYCRegistry");
+    const kyc2 = await KYC2.deploy();
+    await kyc2.waitForDeployment();
 
     await expect(
-      gateway
-        .connect(owner)
-        .setKYCRegistry(newRegistry.address)
-    ).to.not.be.reverted;
+      gateway.connect(user).setKYCRegistry(await kyc2.getAddress())
+    ).to.be.revertedWithCustomError(gateway, "OwnableUnauthorizedAccount");
   });
 });
