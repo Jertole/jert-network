@@ -1,38 +1,39 @@
 
-
-// scripts/export-abi.ts
+// smart-contracts/scripts/export-abi.ts
+import { artifacts } from "hardhat";
 import { promises as fs } from "fs";
 import path from "path";
-import { artifacts } from "hardhat";
 
 async function exportABIs() {
+  // Папка, куда складываем ABI
   const outputDir = path.join(__dirname, "..", "abi");
 
-  // ✔ Создание директории без ошибки EEXIST
+  // Создаём папку, но без ошибки, если она уже есть
   await fs.mkdir(outputDir, { recursive: true });
 
-  const contracts = [
-    "ComplianceGateway",
+  // Список контрактов, ABI которых нужно выгружать
+  const CONTRACTS = [
     "JERTToken",
+    "ComplianceGateway",
     "KYCRegistry",
     "LeaseContract",
+    "TreasuryMultisig",
   ];
 
-  for (const name of contracts) {
-    console.log(`Reading artifact: ${name}`);
+  for (const name of CONTRACTS) {
     const artifact = await artifacts.readArtifact(name);
+    const abi = artifact.abi;
 
-    const filePath = path.join(outputDir, `${name}.json`);
-    await fs.writeFile(filePath, JSON.stringify(artifact.abi, null, 2));
+    const outFile = path.join(outputDir, `${name}.json`);
+    await fs.writeFile(outFile, JSON.stringify(abi, null, 2), "utf-8");
 
-    console.log(`✅ Written ABI: ${filePath}`);
+    console.log(`✅ ABI for ${name} written to ${outFile}`);
   }
 }
 
 exportABIs()
   .then(() => {
-    console.log("🎉 All ABIs exported successfully");
-    process.exit(0);
+    console.log("✅ All ABIs exported successfully");
   })
   .catch((err) => {
     console.error("❌ Error exporting ABIs:", err);
