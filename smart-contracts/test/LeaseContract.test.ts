@@ -1,92 +1,106 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("LeaseContract", function () {
-  it("registers a new lease and stores metadata", async () => {
-    const [owner, tenant] = await ethers.getSigners();
+describe("LeaseContract", () => {
+  async function deployFixture() {
+    const [owner, tenant, other] = await ethers.getSigners();
+    const Lease = await ethers.getContractFactory("LeaseContract");
+    const lease = await Lease.deploy();
+    await lease.waitForDeployment();
 
-    const LeaseContract = await ethers.getContractFactory("LeaseContract");
-    const leaseContract = await LeaseContract.deploy();
-    await leaseContract.waitForDeployment();
+    return { owner, tenant, other, lease };
+  }
 
-    const leaseId = ethers.keccak256(ethers.toUtf8Bytes("LEASE-001"));
-    const start = Math.floor(Date.now() / 1000);
-    const end = start + 3600 * 24 * 365;
+  function randomLeaseId() {
+    return ethers.keccak256(ethers.toUtf8Bytes("lease-" + Date.now().toString()));
+  }
+
+  it("владелец может зарегистрировать новый lease", async () => {
+    const { owner, tenant, lease } = await deployFixture();
+
+    const leaseId = randomLeaseId();
+    const totalAmount = ethers.parseUnits("10000", 18);
+    const now = Math.floor(Date.now() / 1000);
+    const start = now;
+    const end = now + 3600 * 24 * 365; // +1 год
 
     await expect(
-      leaseContract
+      lease
         .connect(owner)
-        .registerLease(leaseId, tenant.address, start, end)
-    ).to.not.be.reverted;
+        .registerLease(leaseId, tenant.address, start, end, totalAmount)
+    )
+      .to.emit(lease, "LeaseRegistered")
+      .withArgs(leaseId, tenant.address, start, end, totalAmount);
 
-    const lease = await leaseContract.getLease(leaseId);
-    expect(lease.leaseId).to.equal(leaseId);
-    expect(lease.tenant).to.equal(tenant.address);
+    const saved = await lease.getLease(leaseId);
+    expect(saved.leaseId).to.equal(leaseId);
+    expect(saved.tenant).to.equal(tenant.address);
+    expect(saved.totalAmount).to.equal(totalAmount);
   });
 
-  it("only owner can register or modify leases", async () => {
-    const [owner, tenant, outsider] = await ethers.getSigners();
+  it("двойная регистрация одного leaseId должна падать", async () => {
+    const { owner, tenant, lease } = await deployFixture();
 
-    const LeaseContract = await ethers.getContractFactory("LeaseContract");
-    const leaseContract = await LeaseContract.deploy();
-    await leaseContract.waitForDeployment();
+    const leaseId = randomLeaseId();
+    const totalAmount = ethers.parseUnits("10000", 18);
 
-    const leaseId = ethers.keccak256(ethers.toUtf8Bytes("LEASE-002"));
-    const start = Math.floor(Date.now() / 1000);
-    const end = start + 3600 * 24 * 365;
-
-    await expect(
-      leaseContract
-        .connect(outsider)
-        .registerLease(leaseId, tenant.address, start, end)
-    ).to.be.revertedWithCustomError(
-      leaseContract,
-      "OwnableUnauthorizedAccount"
-    );
-
-    await leaseContract
+    await lease
       .connect(owner)
-      .registerLease(leaseId, tenant.address, start, end);
+      .registerLease(leaseId, tenant.address, 0, 0, totalAmount);
 
     await expect(
-      leaseContract
-        .connect(outsider)
-        .setLeaseStatus(leaseId, 2) // Expired
-    ).to.be.revertedWithCustomError(
-      leaseContract,
-      "OwnableUnauthorizedAccount"
-    );
+      lease
+        .connect(owner)
+        .registerLease(leaseId, tenant.address, 0, 0, totalAmount)
+    ).to.be.revertedWith("Lease: already exists");
   });
 
-  it("updates status and term of lease", async () => {
-    const [owner, tenant] = await ethers.getSigners();
+  it("recordPayment накапливает paidAmount и может переводить в Completed", async () => {
+    const { owner, tenant, lease } = await deployFixture();
 
-    const LeaseContract = await ethers.getContractFactory("LeaseContract");
-    const leaseContract = await LeaseContract.deploy();
-    await leaseContract.waitForDeployment();
+    const leaseId = randomLeaseId();
+    const totalAmount = ethers.parseUnits("1000", 18);
 
-    const leaseId = ethers.keccak256(ethers.toUtf8Bytes("LEASE-003"));
-    const start = Math.floor(Date.now() / 1000);
-    const end = start + 3600 * 24 * 365;
-
-    await leaseContract
+    await lease
       .connect(owner)
-      .registerLease(leaseId, tenant.address, start, end);
+      .registerLease(leaseId, tenant.address, 0, 0, totalAmount);
 
-    // set status to Expired (1=None, 1=Active, 2=Expired, 3=Terminated in enum)
-    await leaseContract.connect(owner).setLeaseStatus(leaseId, 2);
-    const status = await leaseContract.getLeaseStatus(leaseId);
-    expect(status).to.equal(2);
+    // первая частичная оплата
+    const half = totalAmount / 2n;
+    await lease.connect(owner).recordPayment(leaseId, half);
 
-    const newStart = start + 3600;
-    const newEnd = end + 3600;
+    let stored = await lease.getLease(leaseId);
+    expect(stored.paidAmount).to.equal(half);
+    expect(stored.status).to.equal(1); // Active
 
-    await leaseContract
+    // вторая оплата доводит до полного
+    await lease.connect(owner).recordPayment(leaseId, totalAmount - half);
+
+    stored = await lease.getLease(leaseId);
+    expect(stored.paidAmount).to.equal(totalAmount);
+    // Completed == 4 (Inactive=0 Active=1 Suspended=2 Terminated=3 Completed=4)
+    expect(stored.status).to.equal(4);
+  });
+
+  it("только владелец может менять статус", async () => {
+    const { owner, tenant, other, lease } = await deployFixture();
+
+    const leaseId = randomLeaseId();
+
+    await lease
       .connect(owner)
-      .updateLeaseTerm(leaseId, newStart, newEnd);
+      .registerLease(leaseId, tenant.address, 0, 0, 0);
 
-    const updated = await leaseContract.getLease(leaseId);
-    expect(updated.startTimestamp).to.equal(newStart);
-    expect(updated.endTimestamp).to.equal(newEnd);
+    // смена статуса владельцем
+    await lease
+      .connect(owner)
+      .setLeaseStatus(leaseId, 2); // Suspended
+
+    const stored = await lease.getLease(leaseId);
+    expect(stored.status).to.equal(2);
+
+    await expect(
+      lease.connect(other).setLeaseStatus(leaseId, 3)
+    ).to.be.revertedWithCustomError(lease, "OwnableUnauthorizedAccount");
   });
 });
