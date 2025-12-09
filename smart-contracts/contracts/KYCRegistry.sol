@@ -8,46 +8,47 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 ///         according to off-chain KYC/AML checks.
 /// @dev
 /// - This contract MUST NOT store any personal data (names, documents, addresses, etc.).
-/// - The only purpose is to maintain boolean flags and roles for addresses:
+/// - The only purpose is to maintain boolean flags for addresses:
 ///   * allowed / blocked
 /// - All KYC/AML verification is performed OFF-CHAIN by licensed providers
 ///   and only the resulting status is mirrored on-chain.
 /// - Off-chain providers and compliance logic are orchestrated via the JERT API Gateway.
 contract KYCRegistry is Ownable {
-    /// @notice Emitted when an address receives a new KYC permission status.
+    /// @notice Emitted when the allowed status for an address changes.
+    /// @param account Address whose status changed.
+    /// @param allowed New allowed state for the account.
     event KYCStatusUpdated(address indexed account, bool allowed);
 
-    /// @dev Mapping of address => allowed flag.
+    /// @dev Mapping of addresses to their "allowed" flag.
     mapping(address => bool) private _allowed;
 
-    /// @notice Sets the KYC status for a single address.
-    /// @dev Only callable by the owner (compliance operator / governance).
-    /// @param account Address for which to set the status.
-    /// @param allowed True if address is permitted to interact with restricted areas.
-    function setAllowed(address account, bool allowed) external onlyOwner {
+    /// @notice Sets the allowed / blocked status for a single account.
+    /// @dev Only callable by the contract owner (compliance admin).
+    /// @param account Address whose status is being updated.
+    /// @param allowed True if the account passed off-chain KYC/AML and is allowed.
+    function setKYCStatus(address account, bool allowed) external onlyOwner {
         require(account != address(0), "KYC: zero address");
         _allowed[account] = allowed;
         emit KYCStatusUpdated(account, allowed);
     }
 
-    /// @notice Batch updates KYC status for multiple addresses.
-    /// @dev Only callable by the owner.
-    /// @param accounts Array of addresses.
-    /// @param allowedFlags Array of allowed flags, must be same length as accounts.
-    function setAllowedBatch(
+    /// @notice Batch version of setKYCStatus.
+    /// @dev Arrays must have the same length. Only callable by the owner.
+    /// @param accounts List of addresses to update.
+    /// @param allowedFlags List of allowed flags corresponding to each address.
+    function setKYCStatusBatch(
         address[] calldata accounts,
         bool[] calldata allowedFlags
     ) external onlyOwner {
-        require(
-            accounts.length == allowedFlags.length,
-            "KYC: length mismatch"
-        );
+        uint256 len = accounts.length;
+        require(len == allowedFlags.length, "KYC: length mismatch");
 
-        for (uint256 i = 0; i < accounts.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             address account = accounts[i];
             require(account != address(0), "KYC: zero address");
-            _allowed[account] = allowedFlags[i];
-            emit KYCStatusUpdated(account, allowedFlags[i]);
+            bool allowed = allowedFlags[i];
+            _allowed[account] = allowed;
+            emit KYCStatusUpdated(account, allowed);
         }
     }
 
@@ -55,9 +56,7 @@ contract KYCRegistry is Ownable {
     ///         parts of the JERT ecosystem (e.g. certain pools or instruments).
     /// @param account Address to be checked.
     /// @return isAllowed True if the address passed off-chain KYC/AML checks.
-    function isAllowed(
-        address account
-    ) external view returns (bool isAllowed) {
+    function isAllowed(address account) external view returns (bool isAllowed) {
         isAllowed = _allowed[account];
     }
 }
