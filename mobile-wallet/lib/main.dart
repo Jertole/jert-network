@@ -55,7 +55,6 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (!hasWallet) {
-      // нет кошелька → onboarding
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => OnboardingScreen(walletService: _walletService),
@@ -64,7 +63,6 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    // кошелёк есть → проверяем PIN
     final hasPin = await _walletService.hasPin();
     if (!mounted) return;
 
@@ -86,14 +84,12 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }
 
-/// PIN Unlock: двухфакторная защита входа
+/// PIN Unlock
 class PinUnlockScreen extends StatefulWidget {
   final WalletService walletService;
   const PinUnlockScreen({super.key, required this.walletService});
@@ -175,7 +171,8 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
               if (_error != null)
                 Text(
                   _error!,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                  style:
+                      const TextStyle(color: Colors.redAccent, fontSize: 12),
                 ),
               const SizedBox(height: 24),
               SizedBox(
@@ -199,7 +196,7 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
   }
 }
 
-/// ONBOARDING: создать / импортировать кошелёк + сразу установить PIN (опционально)
+/// ONBOARDING
 class OnboardingScreen extends StatefulWidget {
   final WalletService walletService;
   const OnboardingScreen({super.key, required this.walletService});
@@ -338,7 +335,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-/// HOME: баланс + навигация Send / Receive
+/// HOME
 class HomeScreen extends StatefulWidget {
   final WalletService walletService;
   const HomeScreen({super.key, required this.walletService});
@@ -352,6 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _ethBalance = '0.0';
   String _jertBalance = '0.0';
   bool _loading = true;
+  List<Map<String, dynamic>> _history = [];
 
   @override
   void initState() {
@@ -374,6 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final eth = await widget.walletService.getEthBalance(addr);
       final jert = await widget.walletService.getJertBalance(addr);
+      final history = await widget.walletService.getTransactionHistory();
 
       if (!mounted) return;
       setState(() {
@@ -381,6 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _ethBalance = eth.getValueInUnit(EtherUnit.ether).toStringAsFixed(4);
         _jertBalance =
             NumberFormat.compact().format(jert / BigInt.from(10).pow(18));
+        _history = history;
         _loading = false;
       });
     } catch (e) {
@@ -402,6 +402,20 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("JERT Wallet"),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              if (_address == null) return;
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SettingsScreen(walletService: widget.walletService),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -409,7 +423,9 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(20),
           children: [
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: _loading
@@ -445,7 +461,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 4),
                           Text(
                             "$_ethBalance ETH (for gas)",
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey),
                           ),
                         ],
                       ),
@@ -461,7 +478,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         : () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => ReceiveScreen(address: _address!),
+                                builder: (_) =>
+                                    ReceiveScreen(address: _address!),
                               ),
                             );
                           },
@@ -490,6 +508,49 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 24),
+            const Text(
+              "Recent transactions (from API Gateway)",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            if (_history.isEmpty)
+              const Text(
+                "No history yet.",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              )
+            else
+              Column(
+                children: _history.take(5).map((tx) {
+                  final hash = (tx['hash'] ?? '') as String;
+                  final to = (tx['to'] ?? '') as String;
+                  final value = (tx['valueEth'] ?? '0') as String;
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '$value ETH',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      to,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    trailing: Text(
+                      hash.isEmpty ? '' : '${hash.substring(0, 6)}…',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
           ],
         ),
       ),
@@ -497,7 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// RECEIVE: QR-код адреса
+/// RECEIVE
 class ReceiveScreen extends StatelessWidget {
   final EthereumAddress address;
   const ReceiveScreen({super.key, required this.address});
@@ -538,7 +599,7 @@ class ReceiveScreen extends StatelessWidget {
   }
 }
 
-/// SEND: форма отправки JERT с проверкой PIN (2FA)
+/// SEND (с 2FA по PIN)
 class SendScreen extends StatefulWidget {
   final WalletService walletService;
   final EthereumAddress from;
@@ -567,10 +628,7 @@ class _SendScreenState extends State<SendScreen> {
 
   Future<bool> _checkPin2FA() async {
     final hasPin = await widget.walletService.hasPin();
-    if (!hasPin) {
-      // PIN не установлен — пропускаем 2FA
-      return true;
-    }
+    if (!hasPin) return true;
 
     final controller = TextEditingController();
     bool success = false;
@@ -589,7 +647,8 @@ class _SendScreenState extends State<SendScreen> {
                 verifying = true;
                 error = null;
               });
-              final ok = await widget.walletService.verifyPin(controller.text);
+              final ok =
+                  await widget.walletService.verifyPin(controller.text);
               if (!mounted) return;
               if (ok) {
                 success = true;
@@ -663,7 +722,6 @@ class _SendScreenState extends State<SendScreen> {
   }
 
   Future<void> _send() async {
-    // сначала — 2FA PIN
     final allowed = await _checkPin2FA();
     if (!allowed) return;
 
@@ -681,7 +739,6 @@ class _SendScreenState extends State<SendScreen> {
         throw const FormatException('Invalid amount');
       }
 
-      // amount в JERT с 18 знаками
       final amount = BigInt.from(value * 1e6) * BigInt.from(10).pow(12);
 
       final txHash = await widget.walletService.sendJert(
@@ -749,6 +806,163 @@ class _SendScreenState extends State<SendScreen> {
                     : const Text("Send"),
               ),
             )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// SETTINGS: смена PIN
+class SettingsScreen extends StatefulWidget {
+  final WalletService walletService;
+  const SettingsScreen({super.key, required this.walletService});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _loading = true;
+  bool _hasPin = false;
+
+  final _currentPinController = TextEditingController();
+  final _newPinController = TextEditingController();
+  final _confirmPinController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _currentPinController.dispose();
+    _newPinController.dispose();
+    _confirmPinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final hasPin = await widget.walletService.hasPin();
+    if (!mounted) return;
+    setState(() {
+      _hasPin = hasPin;
+      _loading = false;
+    });
+  }
+
+  Future<void> _changePin() async {
+    final newPin = _newPinController.text.trim();
+    final confirmPin = _confirmPinController.text.trim();
+
+    if (newPin.isEmpty) {
+      _showError('New PIN cannot be empty');
+      return;
+    }
+    if (newPin != confirmPin) {
+      _showError('PIN confirmation does not match');
+      return;
+    }
+
+    if (_hasPin) {
+      final currentPin = _currentPinController.text.trim();
+      final ok = await widget.walletService.verifyPin(currentPin);
+      if (!ok) {
+        _showError('Current PIN is incorrect');
+        return;
+      }
+    }
+
+    await widget.walletService.setPin(newPin);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PIN updated')),
+    );
+    Navigator.of(context).pop();
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Change PIN',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[300],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_hasPin)
+              Column(
+                children: [
+                  TextField(
+                    controller: _currentPinController,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Current PIN',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            TextField(
+              controller: _newPinController,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'New PIN',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _confirmPinController,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Confirm new PIN',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _changePin,
+                child: const Text('Save PIN'),
+              ),
+            ),
           ],
         ),
       ),
