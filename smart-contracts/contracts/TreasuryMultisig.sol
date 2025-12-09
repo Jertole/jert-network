@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -13,36 +14,29 @@ pragma solidity ^0.8.20;
 /// - The contract does NOT implement any USD pricing, energy accounting or cold-energy logic.
 ///   It only holds and routes JERT balances and other assets.
 /// - Threshold configuration (e.g. 3-of-3) MUST be governed by off-chain corporate resolutions.
-/// - All business logic linking JERT balances to MWh / MWh-cold or USD is handled OFF-CHAIN
-///   via the JERT API Gateway and Energy Oracle.
-/// - The contract emits events that can be used by off-chain systems for audit, reporting,
-///   and regulatory oversight.
 contract TreasuryMultisig {
-    /*//////////////////////////////////////////////////////////////
-                             EVENTS
-    //////////////////////////////////////////////////////////////*/
+    /// @notice Emitted when a deposit is received.
+    event Deposit(address indexed sender, uint256 value);
 
-    /// @notice Emitted when a new transaction is submitted.
+    /// @notice Emitted when a transaction is submitted.
     event Submission(uint256 indexed txId);
 
-    /// @notice Emitted when a transaction receives a confirmation from an owner.
+    /// @notice Emitted when a confirmation is made by an owner.
     event Confirmation(address indexed owner, uint256 indexed txId);
 
-    /// @notice Emitted when a confirmation is revoked by an owner.
+    /// @notice Emitted when a confirmation is revoked.
     event Revocation(address indexed owner, uint256 indexed txId);
 
-    /// @notice Emitted when a transaction is executed.
+    /// @notice Emitted when a transaction is executed successfully.
     event Execution(uint256 indexed txId);
 
     /// @notice Emitted when a transaction execution fails.
     event ExecutionFailure(uint256 indexed txId);
 
-    /// @notice Emitted on every ETH deposit into the contract.
-    event Deposit(address indexed sender, uint256 amount);
-
-    /*//////////////////////////////////////////////////////////////
-                             DATA STRUCTURES
-    //////////////////////////////////////////////////////////////*/
+    /// @notice Emitted when the owner set changes.
+    event OwnerAddition(address indexed owner);
+    event OwnerRemoval(address indexed owner);
+    event RequirementChange(uint256 required);
 
     struct Transaction {
         address destination;
@@ -52,219 +46,158 @@ contract TreasuryMultisig {
         uint256 confirmations;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                               STORAGE
-    //////////////////////////////////////////////////////////////*/
-
-    address[] private _owners;
-    mapping(address => bool) public isOwner;
-    uint256 private _threshold;
-
-    mapping(uint256 => Transaction) public transactions;
-    uint256 public transactionCount;
     mapping(uint256 => mapping(address => bool)) public confirmations;
+    mapping(address => bool) public isOwner;
+    address[] public owners;
+    uint256 public required;
+    Transaction[] public transactions;
 
-    /*//////////////////////////////////////////////////////////////
-                               MODIFIERS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev Ensures that the caller is one of the owners.
     modifier onlyOwner() {
-        require(isOwner[msg.sender], "Multisig: caller not owner");
+        require(isOwner[msg.sender], "Multisig: not owner");
         _;
     }
 
-    /// @dev Ensures that a transaction exists.
     modifier txExists(uint256 txId) {
-        require(txId < transactionCount, "Multisig: tx does not exist");
+        require(txId < transactions.length, "Multisig: tx does not exist");
         _;
     }
 
-    /// @dev Ensures that a transaction has not been executed yet.
     modifier notExecuted(uint256 txId) {
         require(!transactions[txId].executed, "Multisig: tx already executed");
         _;
     }
 
-    /// @dev Ensures that the caller has not yet confirmed the transaction.
     modifier notConfirmed(uint256 txId) {
         require(!confirmations[txId][msg.sender], "Multisig: already confirmed");
         _;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                             CONSTRUCTOR
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Deploys a new Treasury Multisig.
-    /// @dev Owners and threshold are fixed at deployment time.
-    /// @param owners_ Addresses of the initial multisig owners.
-    /// @param threshold_ Number of confirmations required to execute a transaction.
-    constructor(address[] memory owners_, uint256 threshold_) {
-        require(owners_.length > 0, "Multisig: owners required");
+    /// @notice Multisig constructor.
+    /// @param _owners List of initial owners.
+    /// @param _required Number of required confirmations for a transaction.
+    constructor(address[] memory _owners, uint256 _required) {
+        require(_owners.length > 0, "Multisig: owners required");
         require(
-            threshold_ > 0 && threshold_ <= owners_.length,
-            "Multisig: invalid threshold"
+            _required > 0 && _required <= _owners.length,
+            "Multisig: invalid required"
         );
 
-        for (uint256 i = 0; i < owners_.length; i++) {
-            address owner = owners_[i];
-            require(owner != address(0), "Multisig: owner zero");
+        for (uint256 i = 0; i < _owners.length; i++) {
+            address owner = _owners[i];
+            require(owner != address(0), "Multisig: zero owner");
             require(!isOwner[owner], "Multisig: owner not unique");
 
             isOwner[owner] = true;
-            _owners.push(owner);
+            owners.push(owner);
+            emit OwnerAddition(owner);
         }
 
-        _threshold = threshold_;
+        required = _required;
+        emit RequirementChange(required);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                              FALLBACKS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Accepts ETH deposits into the multisig treasury.
+    /// @notice Fallback receive function to accept ETH.
+    /// @dev Emits a Deposit event.
     receive() external payable {
-        emit Deposit(msg.sender, msg.value);
+        if (msg.value > 0) {
+            emit Deposit(msg.sender, msg.value);
+        }
     }
 
-    /*//////////////////////////////////////////////////////////////
-                               VIEWS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Returns the array of owner addresses.
-    /// @return ownersArray The list of owners.
-    function getOwners() external view returns (address[] memory ownersArray) {
-        ownersArray = _owners;
+    /// @notice Returns the number of owners.
+    function getOwnersCount() external view returns (uint256) {
+        return owners.length;
     }
 
-    /// @notice Returns the number of confirmations required to execute a transaction.
-    /// @return thresholdCount The threshold of required owner confirmations.
-    function getThreshold() external view returns (uint256 thresholdCount) {
-        thresholdCount = _threshold;
-    }
-
-    /// @notice Returns information about a specific transaction.
-    /// @param txId Transaction identifier.
-    /// @return destination Destination address of the transaction.
-    /// @return value ETH value (in wei) to be sent with the transaction.
-    /// @return data Calldata payload for the transaction.
-    /// @return executed True if the transaction has already been executed.
-    /// @return confirmationsCount Number of confirmations collected.
-    function getTransaction(
-        uint256 txId
-    )
-        external
-        view
-        txExists(txId)
-        returns (
-            address destination,
-            uint256 value,
-            bytes memory data,
-            bool executed,
-            uint256 confirmationsCount
-        )
-    {
-        Transaction storage txn = transactions[txId];
-        return (
-            txn.destination,
-            txn.value,
-            txn.data,
-            txn.executed,
-            txn.confirmations
-        );
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                         TRANSACTION LIFECYCLE
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Submits a new transaction to be approved and executed by the owners.
-    /// @dev The transaction is automatically confirmed by the submitting owner.
-    /// @param destination Destination address of the transaction.
-    /// @param value ETH value (in wei) to send with the transaction (can be 0).
-    /// @param data Calldata for the transaction (e.g. encoded ERC-20 transfer).
-    /// @return txId Newly created transaction identifier.
+    /// @notice Submits and confirms a new transaction in a single call.
+    /// @param destination Recipient address.
+    /// @param value ETH value to send.
+    /// @param data Calldata to pass to the destination.
     function submitTransaction(
         address destination,
         uint256 value,
         bytes calldata data
     ) external onlyOwner returns (uint256 txId) {
-        require(destination != address(0), "Multisig: dest zero");
-
-        txId = transactionCount;
-        transactions[txId] = Transaction({
-            destination: destination,
-            value: value,
-            data: data,
-            executed: false,
-            confirmations: 0
-        });
-        transactionCount++;
-
+        txId = _addTransaction(destination, value, data);
         emit Submission(txId);
-
         _confirmTransaction(txId);
     }
 
-    /// @notice Confirms a transaction that has been previously submitted.
-    /// @param txId Identifier of the transaction to confirm.
+    /// @notice Confirms an existing transaction.
+    /// @param txId Transaction identifier.
     function confirmTransaction(
         uint256 txId
     ) external onlyOwner txExists(txId) notExecuted(txId) notConfirmed(txId) {
         _confirmTransaction(txId);
     }
 
-    /// @dev Internal confirmation logic shared by submitTransaction and confirmTransaction.
-    ///      Executes the transaction automatically when threshold is reached.
-    function _confirmTransaction(uint256 txId) internal {
-        confirmations[txId][msg.sender] = true;
-        transactions[txId].confirmations += 1;
-
-        emit Confirmation(msg.sender, txId);
-
-        if (transactions[txId].confirmations >= _threshold) {
-            _executeTransaction(txId);
-        }
-    }
-
-    /// @notice Revokes a previously given confirmation by the caller.
-    /// @param txId Identifier of the transaction.
+    /// @notice Revokes a previous confirmation.
+    /// @param txId Transaction identifier.
     function revokeConfirmation(
         uint256 txId
-    )
-        external
-        onlyOwner
-        txExists(txId)
-        notExecuted(txId)
-    {
-        require(
-            confirmations[txId][msg.sender],
-            "Multisig: not confirmed by caller"
-        );
-
+    ) external onlyOwner txExists(txId) notExecuted(txId) {
+        require(confirmations[txId][msg.sender], "Multisig: not confirmed");
         confirmations[txId][msg.sender] = false;
-        transactions[txId].confirmations -= 1;
+
+        Transaction storage txn = transactions[txId];
+        txn.confirmations -= 1;
 
         emit Revocation(msg.sender, txId);
     }
 
-    /// @notice Executes a confirmed transaction (if the threshold is already met).
-    /// @dev Can be called by any owner once the required confirmations have been collected.
-    /// @param txId Identifier of the transaction to execute.
+    /// @notice Executes a confirmed transaction.
+    /// @param txId Transaction identifier.
     function executeTransaction(
         uint256 txId
     ) external onlyOwner txExists(txId) notExecuted(txId) {
+        Transaction storage txn = transactions[txId];
+
         require(
-            transactions[txId].confirmations >= _threshold,
+            txn.confirmations >= required,
             "Multisig: not enough confirmations"
         );
+
         _executeTransaction(txId);
     }
 
-    /// @dev Internal transaction execution logic.
-    ///      Marks the transaction as executed before performing the external call to avoid
-    ///      reentrancy on the same txId.
+    /// @dev Internal helper to add a new transaction.
+    function _addTransaction(
+        address destination,
+        uint256 value,
+        bytes calldata data
+    ) internal returns (uint256 txId) {
+        require(destination != address(0), "Multisig: zero destination");
+
+        txId = transactions.length;
+
+        transactions.push(
+            Transaction({
+                destination: destination,
+                value: value,
+                data: data,
+                executed: false,
+                confirmations: 0
+            })
+        );
+    }
+
+    /// @dev Internal helper to confirm and possibly execute a transaction.
+    function _confirmTransaction(uint256 txId) internal {
+        Transaction storage txn = transactions[txId];
+
+        require(!confirmations[txId][msg.sender], "Multisig: already confirmed");
+
+        confirmations[txId][msg.sender] = true;
+        txn.confirmations += 1;
+
+        emit Confirmation(msg.sender, txId);
+
+        if (txn.confirmations >= required && !txn.executed) {
+            _executeTransaction(txId);
+        }
+    }
+
+    /// @dev Internal helper to execute a transaction.
     function _executeTransaction(uint256 txId) internal {
         Transaction storage txn = transactions[txId];
 
