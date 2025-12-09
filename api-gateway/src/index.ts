@@ -1,25 +1,35 @@
+
+import express from "express";
+import cors from "cors";
+import { config } from "./config";
+
+import healthRouter from "./routes/health";
+import { energyRouter } from "./routes/energy";
+import walletRouter from "./routes/wallet";
+import { txRouter } from "./routes/tx";
+import { complianceRouter } from "./routes/compliance";
+import oracleRouter from "./routes/oracle";
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Лог запросов
 app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
-import { kycCheck } from "../compliance-middleware/kyc-check";
-import { amlCheck } from "../compliance-middleware/aml-check";
-import walletRouter from "./router/wallet":
-import express from "express";
-import { energyRouter } from "./routes/energy";
-import { txRouter } from "./routes/tx";
-import { complianceRouter } from "./routes/compliance";
-app.use("/compliance", complianceRouter);
-app.use("/tx", txRouter);
 
-const app = express();
-app.use(express.json());
+// Маршруты под префиксом /api
+app.use("/api", healthRouter);
+app.use("/api/energy", energyRouter);
+app.use("/api/wallet", walletRouter);
+app.use("/api/tx", txRouter);
+app.use("/api/compliance", complianceRouter);
+app.use("/api/oracle", oracleRouter);
 
-app.use("/energy", energyRouter);
-app.use("/api",walletRouter);
-app.use("/api",healthRouter);
-app.use("/api",txRouter);
-app.use("/api",oracleRouter);
-app.use("/api",complianceRouter);
-app.use("/api/tx/send", kycCheck, amlCheck);   // only KYC/AML users may send TX
-app.use("/api/oracle/update", amlCheck);       // oracle must be verified source
+app.listen(config.port, () => {
+  console.log(`JERT API Gateway listening on port ${config.port}`);
+  console.log(`RPC URL: ${config.rpcUrl}`);
+});
