@@ -1,3 +1,4 @@
+
 name: JERT Network CI
 
 on:
@@ -7,9 +8,6 @@ on:
     branches: [ main, master, develop ]
 
 jobs:
-  # ============================
-  # 1) Smart Contracts (Hardhat)
-  # ============================
   smart-contracts:
     name: Smart Contracts (Hardhat)
     runs-on: ubuntu-latest
@@ -25,6 +23,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: smart-contracts/package-lock.json
 
       - name: Install dependencies
         run: npm install
@@ -35,9 +35,6 @@ jobs:
       - name: Run tests
         run: npm test
 
-  # ============================
-  # 2) Corporate Wallet (React)
-  # ============================
   corporate-wallet:
     name: Corporate Multisig UI (React)
     runs-on: ubuntu-latest
@@ -49,25 +46,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
-     - name: Use Node.js 20.x
+
+      - name: Use Node.js 20.x
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: corporate-wallet/package-lock.json
 
       - name: Install dependencies
         run: npm install
 
-      # Если у тебя есть тесты — можешь добавить npm test
-      # - name: Run tests
-      #   run: npm test
-
       - name: Build app
         run: npm run build
 
-  # ============================
-  # 3) API Gateway (Node + TS)
-  # ============================
   api-gateway:
     name: API Gateway (Node + TypeScript)
     runs-on: ubuntu-latest
@@ -84,12 +76,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-         
+          cache: 'npm'
+          cache-dependency-path: api-gateway/package-lock.json
+
       - name: Install dependencies
         run: npm install
 
-      # Если есть отдельный скрипт типа "lint" или "test" —
-      # добавь его сюда. Пока делаем базовую проверку сборки.
       - name: Type check / build (tsc)
         run: |
           if [ -f tsconfig.json ]; then
@@ -98,9 +90,6 @@ jobs:
             echo "No tsconfig.json, skipping typecheck"
           fi
 
-  # ============================
-  # 4) Flutter Wallet (Android/iOS)
-  # ============================
   flutter-wallet:
     name: Flutter JERT Wallet
     runs-on: ubuntu-latest
@@ -128,3 +117,4 @@ jobs:
 
       - name: Flutter tests
         run: flutter test
+
