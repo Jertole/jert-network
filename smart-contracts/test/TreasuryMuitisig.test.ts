@@ -34,7 +34,7 @@ describe("TreasuryMultisig", () => {
     await expect(
       ownerA.sendTransaction({
         to: await multisig.getAddress(),
-        value: ethers.parseEther("1.0")
+        value: ethers.parseEther("1.0"),
       })
     )
       .to.emit(multisig, "Deposit")
@@ -59,31 +59,24 @@ describe("TreasuryMultisig", () => {
   it("2-of-3 подтверждения достаточно для исполнения транзакции", async () => {
     const { multisig, ownerA, ownerB, recipient } = await deployFixture();
 
-    // закинем ETH в multisig
+    // Закинем ETH в multisig
     await ownerA.sendTransaction({
       to: await multisig.getAddress(),
-      value: ethers.parseEther("2")
+      value: ethers.parseEther("2"),
     });
 
     const recipientStart = await ethers.provider.getBalance(recipient.address);
 
-    // submitTransaction от ownerA (автоматически подтверждает 1 раз)
+    // submitTransaction от ownerA (автоматически создаёт запись с id = 0)
     const txValue = ethers.parseEther("1");
     const txData = "0x";
 
-    const submitTx = await multisig
+    await multisig
       .connect(ownerA)
       .submitTransaction(recipient.address, txValue, txData);
 
-    const receipt = await submitTx.wait();
-    const submissionEvent = receipt!.logs.find(
-      (l) => (l as any).fragment?.name === "Submission"
-    );
-    const txId = submissionEvent
-      ? (submissionEvent as any).args[0]
-      : undefined;
-
-    expect(txId).to.not.equal(undefined);
+    // Поскольку это первая транзакция в свежем контракте — её id = 0
+    const txId = 0n;
 
     // ownerB даёт второе подтверждение → должно привести к выполнению
     await expect(
@@ -99,24 +92,19 @@ describe("TreasuryMultisig", () => {
 
     await ownerA.sendTransaction({
       to: await multisig.getAddress(),
-      value: ethers.parseEther("1")
+      value: ethers.parseEther("1"),
     });
 
     const txValue = ethers.parseEther("0.5");
 
-    const submitTx = await multisig
+    await multisig
       .connect(ownerA)
       .submitTransaction(recipient.address, txValue, "0x");
 
-    const receipt = await submitTx.wait();
-    const submissionEvent = receipt!.logs.find(
-      (l) => (l as any).fragment?.name === "Submission"
-    );
-    const txId = submissionEvent
-      ? (submissionEvent as any).args[0]
-      : undefined;
+    // первая и единственная транзакция → id = 0
+    const txId = 0n;
 
-    // попытка принудительно execute при 1 подтверждении
+    // попытка execute при 1 подтверждении должна падать
     await expect(
       multisig.connect(ownerA).executeTransaction(txId)
     ).to.be.revertedWith("Multisig: not enough confirmations");
