@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract JERTToken is ERC20, Ownable {
-    uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
+    uint256 public constant MAX_SUPPLY = 1_000_000_000_000 ether;
 
     constructor(address treasury)
         ERC20("JERT Utility Token", "JERT")
