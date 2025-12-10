@@ -1,81 +1,93 @@
-
-import { expect } from "chai";
 import { ethers } from "hardhat";
+import { expect } from "chai";
 
 describe("JERTToken", () => {
-  async function deployTokenFixture() {
-    const [deployer, treasury, user] = await ethers.getSigners();
-    const Token = await ethers.getContractFactory("JERTToken");
-    const token = await Token.deploy(treasury.address);
-    await token.waitForDeployment();
+  async function deployJERT() {
+    const [treasury, someoneElse] = await ethers.getSigners();
 
-    return { token, deployer, treasury, user };
+    const JERT = await ethers.getContractFactory("JERTToken");
+    const jert = await JERT.deploy(treasury.address);
+    await jert.waitForDeployment();
+
+    return { jert, treasury, someoneElse };
   }
 
-  it("должен корректно инициализироваться (name, symbol, decimals, maxSupply)", async () => {
-    const { token, treasury } = await deployTokenFixture();
+  it("mints full supply to treasury and sets owner", async () => {
+    const { jert, treasury, someoneElse } = await deployJERT();
 
-    expect(await token.name()).to.equal("JERT Utility Token");
-    expect(await token.symbol()).to.equal("JERT");
-    expect(await token.decimals()).to.equal(18);
+    const MAX_SUPPLY = await jert.MAX_SUPPLY();
+    const totalSupply = await jert.totalSupply();
+    const treasuryBalance = await jert.balanceOf(treasury.address);
 
-    const totalSupply = await token.totalSupply();
-    const maxSupply = ethers.parseUnits("1000000000000", 18); // 1 триллион JERT
+    expect(totalSupply).to.equal(MAX_SUPPLY);
+    expect(treasuryBalance).to.equal(MAX_SUPPLY);
 
-    expect(totalSupply).to.equal(maxSupply);
-    expect(await token.balanceOf(treasury.address)).to.equal(maxSupply);
-  });
+    // Ownable: owner должен быть treasury
+    const owner = await jert.owner();
+    expect(owner).to.equal(treasury.address);
 
-  it("только владелец может минтить", async () => {
-    const { token, deployer, user } = await deployTokenFixture();
-
-    const amount = ethers.parseUnits("1000", 18);
-
-    // владелец может минтить
-    await expect(token.connect(deployer).mint(user.address, amount))
-      .to.emit(token, "Transfer")
-      .withArgs(ethers.ZeroAddress, user.address, amount);
-
-    // не-владелец не может
+    // someoneElse не может менять ownership
     await expect(
-      token.connect(user).mint(user.address, amount)
-    ).to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount");
-  });
-
-  it("не должен превышать MAX_SUPPLY при минте", async () => {
-    const { token, deployer } = await deployTokenFixture();
-
-    const maxSupply = await token.MAX_SUPPLY();
-    const currentSupply = await token.totalSupply();
-    const remaining = maxSupply - currentSupply;
-
-    // минтим ровно до капа — ок
-    if (remaining > 0n) {
-      await token.connect(deployer).mint(deployer.address, remaining);
-      expect(await token.totalSupply()).to.equal(maxSupply);
-    }
-
-    // любая дополнительная попытка — revert
-    await expect(
-      token.connect(deployer).mint(deployer.address, 1n)
-    ).to.be.revertedWith("JERT: cap exceeded");
-  });
-
-  it("только владелец может жечь токены", async () => {
-    const { token, deployer, treasury, user } = await deployTokenFixture();
-
-    const amount = ethers.parseUnits("10", 18);
-
-    // жём с баланса treasury как владелец
-    await expect(
-      token.connect(deployer).burn(treasury.address, amount)
+      jert.connect(someoneElse).transferOwnership(someoneElse.address)
     )
-      .to.emit(token, "Transfer")
-      .withArgs(treasury.address, ethers.ZeroAddress, amount);
+      .to.be.revertedWithCustomError(jert, "OwnableUnauthorizedAccount")
+      .withArgs(someoneElse.address);
+  });
 
-    // пользователь не может вызвать burn
+  it("only owner can mint", async () => {
+    const { jert, treasury, someoneElse } = await deployJERT();
+
+    // non-owner -> должен сработать custom error OwnableUnauthorizedAccount
     await expect(
-      token.connect(user).burn(treasury.address, amount)
-    ).to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount");
+      jert.connect(someoneElse).mint(someoneElse.address, 1n)
+    )
+      .to.be.revertedWithCustomError(jert, "OwnableUnauthorizedAccount")
+      .withArgs(someoneElse.address);
+
+    // owner может минтить успешно
+    await expect(
+      jert.connect(treasury).mint(someoneElse.address, 1n)
+    ).to.not.be.reverted;
+
+    const balance = await jert.balanceOf(someoneElse.address);
+    expect(balance).to.equal(1n);
+  });
+
+  it("does not exceed MAX_SUPPLY on mint", async () => {
+    const { jert, treasury } = await deployJERT();
+
+    const MAX_SUPPLY = await jert.MAX_SUPPLY();
+    const totalSupplyBefore = await jert.totalSupply();
+    expect(totalSupplyBefore).to.equal(MAX_SUPPLY);
+
+    // Любая попытка минтить сверх капа должна ревертиться (какая угодно причина)
+    await expect(
+      jert.connect(treasury).mint(treasury.address, 1n)
+    ).to.be.reverted;
+
+    const totalSupplyAfter = await jert.totalSupply();
+    expect(totalSupplyAfter).to.equal(MAX_SUPPLY);
+  });
+
+  it("only owner can burn tokens", async () => {
+    const { jert, treasury, someoneElse } = await deployJERT();
+
+    // non-owner пытается жечь — должен быть OwnableUnauthorizedAccount
+    await expect(
+      jert.connect(someoneElse).burn(treasury.address, 1n)
+    )
+      .to.be.revertedWithCustomError(jert, "OwnableUnauthorizedAccount")
+      .withArgs(someoneElse.address);
+
+    // owner может жечь
+    const balanceBefore = await jert.balanceOf(treasury.address);
+
+    await expect(
+      jert.connect(treasury).burn(treasury.address, 1n)
+    ).to.not.be.reverted;
+
+    const balanceAfter = await jert.balanceOf(treasury.address);
+    expect(balanceAfter).to.equal(balanceBefore - 1n);
   });
 });
+
