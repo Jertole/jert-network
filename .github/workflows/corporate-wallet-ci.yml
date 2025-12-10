@@ -1,1 +1,58 @@
+name: Corporate Wallet CI
 
+on:
+  push:
+    paths:
+      - "corporate-wallet/**"
+      - ".github/workflows/corporate-wallet-ci.yml"
+  pull_request:
+    paths:
+      - "corporate-wallet/**"
+      - ".github/workflows/corporate-wallet-ci.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Забираем репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Node.js 20 + кэш npm
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: corporate-wallet/package-lock.json
+
+      # 3. Устанавливаем зависимости для corporate-wallet
+      - name: Install dependencies
+        working-directory: ./corporate-wallet
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # 4. Тесты (если скрипт есть в package.json)
+      - name: Run tests
+        working-directory: ./corporate-wallet
+        run: npm test --if-present
+
+      # 5. TypeScript typecheck (если есть)
+      - name: Type check
+        working-directory: ./corporate-wallet
+        run: npm run typecheck --if-present
+
+      # 6. ESLint (если есть)
+      - name: Lint
+        working-directory: ./corporate-wallet
+        run: npm run lint --if-present
+
+      # 7. Сборка UI — ОБЯЗАТЕЛЬНО
+      - name: Build Corporate Wallet
+        working-directory: ./corporate-wallet
+        run: npm run build
