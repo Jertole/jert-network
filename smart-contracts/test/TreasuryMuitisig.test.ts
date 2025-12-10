@@ -1,112 +1,136 @@
-import { expect } from "chai";
 import { ethers } from "hardhat";
+import { expect } from "chai";
 
 describe("TreasuryMultisig", () => {
-  async function deployFixture() {
-    const [ownerA, ownerB, ownerC, nonOwner, recipient] =
-      await ethers.getSigners();
+  async function deployMultisig() {
+    const [owner1, owner2, owner3, nonOwner] = await ethers.getSigners();
+    const owners = [owner1.address, owner2.address, owner3.address];
+    const numConfirmationsRequired = 2;
 
-    const owners = [ownerA.address, ownerB.address, ownerC.address];
-    const required = 2; // 2-of-3 для теста
-
-    const Multi = await ethers.getContractFactory("TreasuryMultisig");
-    const multisig = await Multi.deploy(owners, required);
+    const Treasury = await ethers.getContractFactory("TreasuryMultisig");
+    const multisig = await Treasury.deploy(owners, numConfirmationsRequired);
     await multisig.waitForDeployment();
 
-    return { multisig, ownerA, ownerB, ownerC, nonOwner, recipient };
+    return {
+      multisig,
+      owners,
+      owner1,
+      owner2,
+      owner3,
+      nonOwner,
+      numConfirmationsRequired,
+    };
   }
 
-  it("инициализируется с нужными владельцами и threshold", async () => {
-    const { multisig, ownerA, ownerB, ownerC } = await deployFixture();
+  it("deploys with correct owners and required confirmations", async () => {
+    const {
+      multisig,
+      owners,
+      numConfirmationsRequired,
+    } = await deployMultisig();
 
-    expect(await multisig.isOwner(ownerA.address)).to.equal(true);
-    expect(await multisig.isOwner(ownerB.address)).to.equal(true);
-    expect(await multisig.isOwner(ownerC.address)).to.equal(true);
-    expect(await multisig.getOwnersCount()).to.equal(3n);
+    const onChainOwners = await multisig.getOwners();
+    expect(onChainOwners).to.deep.equal(owners);
 
-    const required = await multisig.required();
-    expect(required).to.equal(2n);
+    const required = await multisig.numConfirmationsRequired();
+    expect(Number(required)).to.equal(numConfirmationsRequired);
   });
 
-  it("депозит ETH увеличивает баланс и эмитит событие", async () => {
-    const { multisig, ownerA } = await deployFixture();
+  it("allows only owners to submit transactions", async () => {
+    const { multisig, owner1, nonOwner } = await deployMultisig();
 
+    const to = nonOwner.address;
+    const value = 0;
+    const data = "0x";
+
+    // владелец может сабмитить
+    await expect(multisig.connect(owner1).submitTransaction(to, value, data))
+      .to.emit(multisig, "SubmitTransaction");
+
+    // не-владелец не может
     await expect(
-      ownerA.sendTransaction({
-        to: await multisig.getAddress(),
-        value: ethers.parseEther("1.0"),
-      })
-    )
-      .to.emit(multisig, "Deposit")
-      .withArgs(ownerA.address, ethers.parseEther("1.0"));
-
-    const balance = await ethers.provider.getBalance(
-      await multisig.getAddress()
-    );
-    expect(balance).to.equal(ethers.parseEther("1.0"));
+      multisig.connect(nonOwner).submitTransaction(to, value, data)
+    ).to.be.revertedWith("not owner");
   });
 
-  it("non-owner не может создавать транзакции", async () => {
-    const { multisig, nonOwner } = await deployFixture();
+  it("requires enough confirmations to execute transaction", async () => {
+    const {
+      multisig,
+      owner1,
+      owner2,
+      owner3,
+      numConfirmationsRequired,
+    } = await deployMultisig();
 
-    await expect(
-      multisig
-        .connect(nonOwner)
-        .submitTransaction(nonOwner.address, 0, "0x")
-    ).to.be.revertedWith("Multisig: not owner");
-  });
-
-  it("2-of-3 подтверждения достаточно для исполнения транзакции", async () => {
-    const { multisig, ownerA, ownerB, recipient } = await deployFixture();
-
-    // Закинем ETH в multisig
-    await ownerA.sendTransaction({
-      to: await multisig.getAddress(),
-      value: ethers.parseEther("2"),
-    });
-
-    const recipientStart = await ethers.provider.getBalance(recipient.address);
-
-    // submitTransaction от ownerA (автоматически создаёт запись с id = 0)
-    const txValue = ethers.parseEther("1");
-    const txData = "0x";
-
-    await multisig
-      .connect(ownerA)
-      .submitTransaction(recipient.address, txValue, txData);
-
-    // Поскольку это первая транзакция в свежем контракте — её id = 0
-    const txId = 0n;
-
-    // ownerB даёт второе подтверждение → должно привести к выполнению
-    await expect(
-      multisig.connect(ownerB).confirmTransaction(txId)
-    ).to.emit(multisig, "Execution");
-
-    const recipientEnd = await ethers.provider.getBalance(recipient.address);
-    expect(recipientEnd - recipientStart).to.equal(txValue);
-  });
-
-  it("нельзя выполнить транзакцию без достаточных подтверждений", async () => {
-    const { multisig, ownerA, recipient } = await deployFixture();
-
-    await ownerA.sendTransaction({
+    // отправляем немного ETH на мультисиг, чтобы была с чем работать
+    const [sender] = await ethers.getSigners();
+    await sender.sendTransaction({
       to: await multisig.getAddress(),
       value: ethers.parseEther("1"),
     });
 
-    const txValue = ethers.parseEther("0.5");
+    const to = owner3.address;
+    const value = ethers.parseEther("0.5");
+    const data = "0x";
 
-    await multisig
-      .connect(ownerA)
-      .submitTransaction(recipient.address, txValue, "0x");
-
-    // первая и единственная транзакция → id = 0
-    const txId = 0n;
-
-    // попытка execute при 1 подтверждении должна падать
+    // submit tx
     await expect(
-      multisig.connect(ownerA).executeTransaction(txId)
-    ).to.be.revertedWith("Multisig: not enough confirmations");
+      multisig.connect(owner1).submitTransaction(to, value, data)
+    ).to.emit(multisig, "SubmitTransaction");
+
+    const txCount = await multisig.getTransactionCount();
+    const txId = txCount - 1n; // последний tx
+
+    // подтверждаем только одним владельцем — должно не дать выполнить
+    await expect(
+      multisig.connect(owner1).confirmTransaction(txId)
+    ).to.emit(multisig, "ConfirmTransaction");
+
+    // пытаемся выполнить с недостаточным числом подтверждений
+    await expect(
+      multisig.connect(owner1).executeTransaction(txId)
+    ).to.be.revertedWith("cannot execute tx");
+
+    // добираем нужное количество подтверждений
+    await expect(
+      multisig.connect(owner2).confirmTransaction(txId)
+    ).to.emit(multisig, "ConfirmTransaction");
+
+    // теперь уже должно исполниться
+    await expect(
+      multisig.connect(owner1).executeTransaction(txId)
+    ).to.emit(multisig, "ExecuteTransaction");
+
+    const tx = await multisig.getTransaction(txId);
+    expect(tx.executed).to.equal(true);
+    expect(tx.numConfirmations).to.equal(BigInt(numConfirmationsRequired));
+  });
+
+  it("does not allow double confirmation or double execution", async () => {
+    const { multisig, owner1, owner2, owner3 } = await deployMultisig();
+
+    const to = owner3.address;
+    const value = 0;
+    const data = "0x";
+
+    await multisig.connect(owner1).submitTransaction(to, value, data);
+    const txCount = await multisig.getTransactionCount();
+    const txId = txCount - 1n;
+
+    await multisig.connect(owner1).confirmTransaction(txId);
+
+    // повторное подтверждение тем же владельцем запрещено
+    await expect(
+      multisig.connect(owner1).confirmTransaction(txId)
+    ).to.be.revertedWith("tx already confirmed");
+
+    await multisig.connect(owner2).confirmTransaction(txId);
+    await multisig.connect(owner1).executeTransaction(txId);
+
+    // повторное исполнение тоже запрещено
+    await expect(
+      multisig.connect(owner1).executeTransaction(txId)
+    ).to.be.revertedWith("tx already executed");
   });
 });
+
