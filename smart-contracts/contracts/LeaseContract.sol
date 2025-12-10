@@ -3,66 +3,89 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title Lease Contract
-/// @notice Базовый контракт аренды для JERT-терминалов/участков.
-/// @dev Простая модель, которую можно расширять по мере необходимости.
 contract LeaseContract is Ownable {
-    struct Lease {
-        address lessee;     // арендатора
-        uint256 amount;     // сумма платежа (например, в JERT или в wei)
-        uint64 startDate;   // timestamp начала
-        uint64 endDate;     // timestamp окончания
-        bool active;        // статус
+    enum Status {
+        Inactive,
+        Active,
+        Suspended,
+        Terminated,
+        Completed
     }
 
-    uint256 public nextLeaseId;
-    mapping(uint256 => Lease) public leases;
+    struct Lease {
+        bytes32 leaseId;
+        address tenant;
+        uint256 totalAmount;
+        uint256 paidAmount;
+        Status status;
+    }
 
-    event LeaseCreated(
-        uint256 indexed leaseId,
-        address indexed lessee,
-        uint256 amount,
-        uint64 startDate,
-        uint64 endDate
+    mapping(bytes32 => Lease) public leases;
+
+    event LeaseRegistered(
+        bytes32 indexed leaseId,
+        address indexed tenant,
+        uint256 startDate,
+        uint256 endDate,
+        uint256 totalAmount
     );
 
-    event LeaseClosed(uint256 indexed leaseId);
+    event LeaseStatusChanged(bytes32 indexed leaseId, Status status);
 
     constructor() Ownable(msg.sender) {}
 
-    /// @notice Создать новый договор аренды.
-    function createLease(
-        address lessee,
-        uint256 amount,
-        uint64 startDate,
-        uint64 endDate
-    ) external onlyOwner returns (uint256 leaseId) {
-        require(lessee != address(0), "Lease: zero lessee");
-        require(endDate > startDate, "Lease: invalid dates");
+    function registerLease(
+        bytes32 leaseId,
+        address tenant,
+        uint256 startDate,
+        uint256 endDate,
+        uint256 totalAmount
+    ) external onlyOwner {
+        require(leases[leaseId].tenant == address(0), "Lease: already exists");
 
-        leaseId = nextLeaseId++;
         leases[leaseId] = Lease({
-            lessee: lessee,
-            amount: amount,
-            startDate: startDate,
-            endDate: endDate,
-            active: true
+            leaseId: leaseId,
+            tenant: tenant,
+            totalAmount: totalAmount,
+            paidAmount: 0,
+            status: Status.Active
         });
 
-        emit LeaseCreated(leaseId, lessee, amount, startDate, endDate);
+        emit LeaseRegistered(
+            leaseId,
+            tenant,
+            startDate,
+            endDate,
+            totalAmount
+        );
     }
 
-    /// @notice Закрыть договор аренды.
-    function closeLease(uint256 leaseId) external onlyOwner {
-        Lease storage lease = leases[leaseId];
-        require(lease.active, "Lease: already inactive");
+    function recordPayment(bytes32 leaseId, uint256 amount)
+        external
+        onlyOwner
+    {
+        Lease storage L = leases[leaseId];
+        require(L.tenant != address(0), "Lease: not exists");
 
-        lease.active = false;
-        emit LeaseClosed(leaseId);
+        L.paidAmount += amount;
+
+        if (L.paidAmount >= L.totalAmount) {
+            L.status = Status.Completed;
+        }
+
+        emit LeaseStatusChanged(leaseId, L.status);
     }
 
-    /// @notice Получить данные по договору.
-    function getLease(uint256 leaseId) external view returns (Lease memory) {
+    function setLeaseStatus(bytes32 leaseId, Status status) external onlyOwner {
+        Lease storage L = leases[leaseId];
+        require(L.tenant != address(0), "Lease: not exists");
+
+        L.status = status;
+
+        emit LeaseStatusChanged(leaseId, status);
+    }
+
+    function getLease(bytes32 leaseId) external view returns (Lease memory) {
         return leases[leaseId];
     }
 }
