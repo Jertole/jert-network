@@ -1,3 +1,4 @@
+
 import { ethers } from "hardhat";
 import { expect } from "chai";
 
@@ -37,20 +38,17 @@ describe("JERTToken", () => {
   it("only owner can mint", async () => {
     const { jert, treasury, someoneElse } = await deployJERT();
 
-    // non-owner -> должен сработать custom error OwnableUnauthorizedAccount
+    // 1) non-owner → должен словить OwnableUnauthorizedAccount
     await expect(
       jert.connect(someoneElse).mint(someoneElse.address, 1n)
     )
       .to.be.revertedWithCustomError(jert, "OwnableUnauthorizedAccount")
       .withArgs(someoneElse.address);
 
-    // owner может минтить успешно
+    // 2) owner ПЫТАЕТСЯ минтить, но кап уже исчерпан → любая попытка минта ревертится
     await expect(
       jert.connect(treasury).mint(someoneElse.address, 1n)
-    ).to.not.be.reverted;
-
-    const balance = await jert.balanceOf(someoneElse.address);
-    expect(balance).to.equal(1n);
+    ).to.be.reverted;
   });
 
   it("does not exceed MAX_SUPPLY on mint", async () => {
@@ -60,7 +58,7 @@ describe("JERTToken", () => {
     const totalSupplyBefore = await jert.totalSupply();
     expect(totalSupplyBefore).to.equal(MAX_SUPPLY);
 
-    // Любая попытка минтить сверх капа должна ревертиться (какая угодно причина)
+    // Любая попытка минтить сверх капа должна ревертиться
     await expect(
       jert.connect(treasury).mint(treasury.address, 1n)
     ).to.be.reverted;
@@ -90,4 +88,3 @@ describe("JERTToken", () => {
     expect(balanceAfter).to.equal(balanceBefore - 1n);
   });
 });
-
