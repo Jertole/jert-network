@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from "react";
 import { BrowserProvider, Contract, formatEther, parseEther } from "ethers";
 import {
   TREASURY_MULTISIG_ABI,
   TREASURY_MULTISIG_ADDRESS,
-} from "../constants/treasuryMultisig";
+} from "../config/treasuryMultisig";
 
 declare global {
   interface Window {
@@ -41,7 +40,6 @@ const MultisigDashboard: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
 
-  // Подключение к MetaMask
   const connectWallet = async () => {
     try {
       if (!window.ethereum) {
@@ -70,13 +68,11 @@ const MultisigDashboard: React.FC = () => {
     }
   };
 
-  // Загрузка базовой инфы (owners, required, tx list)
   const loadMultisigState = async (_contract?: Contract) => {
     try {
       const c = _contract ?? contract;
       if (!c) return;
 
-      // owners
       const onChainOwners: string[] = await c.getOwners();
       setOwners(onChainOwners);
 
@@ -91,7 +87,6 @@ const MultisigDashboard: React.FC = () => {
         );
       }
 
-      // transactions
       setLoadingTxs(true);
       const txCountBig: bigint = await c.getTransactionCount();
       const txCount = Number(txCountBig);
@@ -118,14 +113,12 @@ const MultisigDashboard: React.FC = () => {
     }
   };
 
-  // Первый рендер: если MetaMask есть — не коннектимся автоматически, даём кнопку
   useEffect(() => {
     if (!window.ethereum) {
       setError("MetaMask не найден. Установи расширение браузера.");
     }
   }, []);
 
-  // Когда меняется контракт или адрес — перезагружаем состояние
   useEffect(() => {
     if (contract) {
       loadMultisigState(contract);
@@ -133,7 +126,6 @@ const MultisigDashboard: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract, signerAddress]);
 
-  // Сабмит новой транзакции
   const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -163,12 +155,10 @@ const MultisigDashboard: React.FC = () => {
       const tx = await contract.submitTransaction(newTxTo, valueWei, dataBytes);
       await tx.wait();
 
-      // Очистить форму
       setNewTxTo("");
       setNewTxValue("0");
       setNewTxData("0x");
 
-      // Перезагрузить состояние
       await loadMultisigState();
     } catch (e: any) {
       console.error(e);
@@ -213,14 +203,13 @@ const MultisigDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex justify-center p-4">
       <div className="w-full max-w-5xl space-y-6">
-        {/* Header */}
         <header className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               JERT Treasury Multisig
             </h1>
             <p className="text-sm text-slate-400">
-              Корпоративный неоновый мультисиг-кошелёк Cryogas / JERT Network
+              Корпоративный мультисиг-кошелёк Cryogas / JERT Network
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -251,14 +240,12 @@ const MultisigDashboard: React.FC = () => {
           </div>
         </header>
 
-        {/* Ошибки */}
         {error && (
           <div className="rounded-xl border border-red-600/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
             {error}
           </div>
         )}
 
-        {/* Общая инфа */}
         <section className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
             <h2 className="text-sm font-semibold text-slate-300 mb-2">
@@ -325,26 +312,16 @@ const MultisigDashboard: React.FC = () => {
               {TREASURY_MULTISIG_ADDRESS}
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              Убедись, что этот адрес совпадает с деплоем в сети (Hardhat / testnet / mainnet).
+              Убедись, что этот адрес совпадает с деплоем в сети.
             </p>
           </div>
         </section>
 
-        {/* Форма создания транзакции */}
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-200">
               Создать транзакцию
             </h2>
-            {isOwner ? (
-              <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/40">
-                Доступно: владелец
-              </span>
-            ) : (
-              <span className="text-[10px] px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                Только для владельцев
-              </span>
-            )}
           </div>
 
           <form
@@ -379,7 +356,7 @@ const MultisigDashboard: React.FC = () => {
               />
             </div>
 
-            <div className="flex flex-col gap-1 md:col-span-1">
+            <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">
                 Data (hex, optional)
               </label>
@@ -403,7 +380,6 @@ const MultisigDashboard: React.FC = () => {
           </form>
         </section>
 
-        {/* Список транзакций */}
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-200">
