@@ -23,7 +23,7 @@ class JertNetworkConfig {
   });
 }
 
-/// Получить конфиг по умолчанию для мобильного приложения
+/// Конфиг сети по умолчанию
 JertNetworkConfig getDefaultJertNetworkConfig() {
   final info = defaultJertNetworkInfo;
 
@@ -37,3 +37,6 @@ JertNetworkConfig getDefaultJertNetworkConfig() {
     treasuryAddress: getDefaultTreasuryAddress(),
   );
 }
+
+/// Для старого кода, который зовёт getDefaultJertNetwork()
+JertNetworkConfig getDefaultJertNetwork() => getDefaultJertNetworkConfig();
