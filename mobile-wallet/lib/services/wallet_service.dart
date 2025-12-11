@@ -1,3 +1,4 @@
+// lib/services/wallet_service.dart
 
 import 'dart:math';
 
@@ -6,103 +7,109 @@ import 'package:web3dart/web3dart.dart';
 
 import '../config/jert_network_config.dart';
 
-/// Простая модель баланса кошелька:
-/// nativeBalance — ETH/SEPOLIA в wei
-/// tokenBalance  — баланс JERT в wei (пока заглушка)
+/// Баланс кошелька + производные показатели для UI.
 class WalletBalance {
-  final BigInt nativeBalance;
-  final BigInt tokenBalance;
+  final String address;
+  final EtherAmount nativeBalance; // ETH/SEPOLIA
+  final BigInt tokenBalance;       // JERT в wei (заглушка)
 
   WalletBalance({
+    required this.address,
     required this.nativeBalance,
     required this.tokenBalance,
   });
+
+  /// ETH / SEPOLIA
+  double get balanceEth =>
+      nativeBalance.getValueInUnit(EtherUnit.ether).toDouble();
+
+  /// Баланс JERT (пока просто 0)
+  double get balanceJert => tokenBalance.toDouble() / 1e18;
+
+  /// Условный эквивалент в USD (для UI, пока заглушка)
+  double get balanceUsd => balanceJert * 1.0;
+
+  /// Условная энергия в MWh (для UI)
+  double get energyMwh => balanceJert * 0.001;
+
+  /// Условная "холодная энергия" в MWh (для UI)
+  double get energyMwhCold => balanceJert * 0.0015;
 }
 
-/// Простая модель транзакции для истории.
+/// Транзакция для истории.
 class TxItem {
   final String hash;
   final String from;
   final String to;
-  final BigInt value;
+  final BigInt valueWei;
   final DateTime timestamp;
+  final String status;     // success / pending / failed
+  final double amountJert; // для UI
 
   TxItem({
     required this.hash,
     required this.from,
     required this.to,
-    required this.value,
+    required this.valueWei,
     required this.timestamp,
-  });
+    this.status = 'success',
+    double? amountJert,
+  }) : amountJert = amountJert ?? valueWei.toDouble() / 1e18;
 }
 
 /// Основной сервис кошелька.
-/// ВАЖНО: есть конструктор БЕЗ параметров, как в твоём main.dart.
 class WalletService {
   late final Web3Client client;
 
-  /// Приватный ключ, который мы создаём/загружаем через createOrLoadPrivateKey().
-  String? _privateKeyHex;
+  EthPrivateKey? _credentials;
+  String? _address;
 
   WalletService() {
-    // Берём RPC из сети по умолчанию (Sepolia/Hardhat, как настроишь в jert_network_config.dart)
     final rpcUrl = defaultJertNetworkConfig.rpcUrl;
     client = Web3Client(rpcUrl, http.Client());
   }
 
-  /// Вспомогательное: преобразуем hex-ключ в Credentials.
-  Credentials _credentialsFromHex(String hex) {
-    return EthPrivateKey.fromHex(hex);
-  }
-
-  /// Создаём НОВЫЙ приватный ключ (пока без сохранения в storage)
-  /// или возвращаем уже созданный в рамках этого запуска.
+  /// Создать (или вернуть уже созданный) приватный ключ и адрес.
   Future<String> createOrLoadPrivateKey() async {
-    if (_privateKeyHex != null) return _privateKeyHex!;
+    if (_address != null) return _address!;
 
-    final rng = Random.secure();
-    final key = EthPrivateKey.createRandom(rng);
-    final bytes = await key.extractPrivateKeyBytes();
-
-    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    _privateKeyHex = hex;
-    return hex;
+    _credentials = EthPrivateKey.createRandom(Random.secure());
+    final addr = await _credentials!.extractAddress();
+    _address = addr.hexEip55;
+    return _address!;
   }
 
-  /// Получение баланса кошелька по адресу.
+  Future<EthPrivateKey> _getCredentials() async {
+    if (_credentials != null) return _credentials!;
+    await createOrLoadPrivateKey();
+    return _credentials!;
+  }
+
+  /// Получить баланс кошелька.
   Future<WalletBalance> fetchBalance(String address) async {
     final ethAddress = EthereumAddress.fromHex(address);
     final native = await client.getBalance(ethAddress);
 
-    // Здесь потом можно добавить реальное чтение баланса JERT-токена.
+    // Здесь позже добавится реальный баланс JERT-токена.
     return WalletBalance(
-      nativeBalance: native.getInWei,
+      address: address,
+      nativeBalance: native,
       tokenBalance: BigInt.zero,
     );
   }
 
-  /// Заглушка для истории транзакций.
-  /// Сейчас просто возвращает пустой список, чтобы приложение собиралось.
+  /// Заглушка: история транзакций — пока пустой список.
   Future<List<TxItem>> fetchHistory(String address) async {
-    // TODO: подключить реальную историю (Etherscan API и т.п.)
     return <TxItem>[];
   }
 
-  /// Отправка "токена JERT".
-  /// Пока для простоты шлём нативный токен сети (ETH/SEPOLIA) транзакцией.
+  /// Отправка "JERT" — пока шлём нативный токен сети.
   Future<String> sendJert({
     required String fromAddress,
     required String toAddress,
     required BigInt amountWei,
   }) async {
-    final privateKeyHex = _privateKeyHex;
-    if (privateKeyHex == null) {
-      throw StateError(
-        'Private key is not initialized. Call createOrLoadPrivateKey() first.',
-      );
-    }
-
-    final credentials = _credentialsFromHex(privateKeyHex);
+    final creds = await _getCredentials();
 
     final tx = Transaction(
       from: EthereumAddress.fromHex(fromAddress),
@@ -111,10 +118,11 @@ class WalletService {
     );
 
     final hash = await client.sendTransaction(
-      credentials,
+      creds,
       tx,
       chainId: defaultJertNetworkConfig.chainId,
     );
+
     return hash;
   }
 }
