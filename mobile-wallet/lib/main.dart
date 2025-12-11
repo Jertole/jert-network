@@ -26,7 +26,7 @@ class JertWalletApp extends StatelessWidget {
   }
 }
 
-/// Экран загрузки: создаёт WalletService и адрес, потом переходит на MainScreen.
+/// Сплэш: создаёт кошелёк и адрес, переходит на MainScreen.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -62,14 +62,12 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }
 
-/// Основной экран с bottom navigation: Home / Send / History.
+/// Основной экран с BottomNavigationBar.
 class MainScreen extends StatefulWidget {
   final WalletService walletService;
   final String address;
@@ -95,8 +93,8 @@ class _MainScreenState extends State<MainScreen> {
         address: widget.address,
       ),
       SendScreen(
-        walletService: widget.walletService,
         fromAddress: widget.address,
+        walletService: widget.walletService,
       ),
       HistoryScreen(
         walletService: widget.walletService,
