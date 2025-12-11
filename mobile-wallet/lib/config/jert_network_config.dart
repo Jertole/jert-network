@@ -1,6 +1,6 @@
 
-import 'package:jert_network/config/jert_networks.dart';
-import 'package:jert_network/config/jert_token.dart';
+import 'jert_networks.dart';
+import 'jert_token.dart';
 
 /// Конфиг сети JERT для UI (баланс, адреса и т.п.)
 class JertNetworkConfig {
