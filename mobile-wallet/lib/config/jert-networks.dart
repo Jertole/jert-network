@@ -1,41 +1,43 @@
-// lib/config/jert_networks.dart
 
-enum JertNetworkKey { hardhat, sepolia }
+/// Ключи поддерживаемых сетей JERT
+enum JertNetworkKey {
+  hardhat,
+  sepolia,
+}
 
-class JertNetworkConfig {
-  final JertNetworkKey key;
-  final String label;
-  final int chainId;
+/// Базовая информация о сети
+class JertNetworkInfo {
+  final String name;
   final String rpcUrl;
-  final String? explorerUrl;
+  final int chainId;
+  final String explorerUrl;
 
-  const JertNetworkConfig({
-    required this.key,
-    required this.label,
-    required this.chainId,
+  const JertNetworkInfo({
+    required this.name,
     required this.rpcUrl,
-    this.explorerUrl,
+    required this.chainId,
+    required this.explorerUrl,
   });
 }
 
-const Map<JertNetworkKey, JertNetworkConfig> jertNetworks = {
-  JertNetworkKey.hardhat: JertNetworkConfig(
-    key: JertNetworkKey.hardhat,
-    label: 'Localhost (Hardhat)',
-    chainId: 31337,
+/// Карта сетей по ключу
+const Map<JertNetworkKey, JertNetworkInfo> jertNetworks = {
+  JertNetworkKey.hardhat: JertNetworkInfo(
+    name: 'Hardhat Local',
     rpcUrl: 'http://127.0.0.1:8545',
+    chainId: 31337,
+    explorerUrl: '',
   ),
-  JertNetworkKey.sepolia: JertNetworkConfig(
-    key: JertNetworkKey.sepolia,
-    label: 'Sepolia (Alchemy/Infura)',
+  JertNetworkKey.sepolia: JertNetworkInfo(
+    name: 'Sepolia Testnet',
+    rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY',
     chainId: 11155111,
-    rpcUrl: String.fromEnvironment('SEPOLIA_RPC_URL', defaultValue: ''),
-    // если захочешь, можно добавить и explorerUrl
+    explorerUrl: 'https://sepolia.etherscan.io',
   ),
 };
 
-const JertNetworkKey defaultJertNetwork = JertNetworkKey.hardhat;
+/// Сеть по умолчанию для мобильного кошелька
+const JertNetworkKey defaultJertNetworkKey = JertNetworkKey.sepolia;
 
-JertNetworkConfig getDefaultJertNetwork() {
-  return jertNetworks[defaultJertNetwork]!;
-}
+JertNetworkInfo get defaultJertNetworkInfo =>
+    jertNetworks[defaultJertNetworkKey]!;
