@@ -1,206 +1,100 @@
+
 import 'package:flutter/material.dart';
+
 import '../services/wallet_service.dart';
-import 'send_screen.dart';
-import 'history_screen.dart';
+import '../widgets/jert_balance_card.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final WalletService walletService;
+  final String address;
+
+  const HomeScreen({
+    super.key,
+    required this.walletService,
+    required this.address,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _addressController = TextEditingController();
-  final _walletService = WalletService();
-
   WalletBalance? _balance;
-  bool _loading = false;
+  bool _isLoading = true;
   String? _error;
 
   @override
-  void dispose() {
-    _addressController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadBalance();
   }
 
   Future<void> _loadBalance() async {
-    final address = _addressController.text.trim();
-    if (address.isEmpty) {
-      setState(() {
-        _error = 'Enter wallet address';
-      });
-      return;
-    }
-
     setState(() {
-      _loading = true;
+      _isLoading = true;
       _error = null;
     });
 
     try {
-      final bal = await _walletService.fetchBalance(address);
+      final balance =
+          await widget.walletService.fetchBalance(widget.address);
       setState(() {
-        _balance = bal;
+        _balance = balance;
+        _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to load balance: $e';
-      });
-    } finally {
-      setState(() {
-        _loading = false;
+        _error = e.toString();
+        _isLoading = false;
       });
     }
-  }
-
-  void _openSend() {
-    final address = _addressController.text.trim();
-    if (address.isEmpty) {
-      setState(() {
-        _error = 'Enter wallet address first';
-      });
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SendScreen(fromAddress: address),
-      ),
-    );
-  }
-
-  void _openHistory() {
-    final address = _addressController.text.trim();
-    if (address.isEmpty) {
-      setState(() {
-        _error = 'Enter wallet address first';
-      });
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => HistoryScreen(address: address),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('JERT Mobile Wallet'),
-      ),
-      body: Padding(
+    return RefreshIndicator(
+      onRefresh: _loadBalance,
+      child: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _addressController,
-              decoration: const InputDecoration(
-                labelText: 'Wallet address',
-                hintText: '0x...',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: _loading ? null : _loadBalance,
-                  child: const Text('Load Balance'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _openSend,
-                  child: const Text('Send'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _openHistory,
-                  child: const Text('History'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_loading) const CircularProgressIndicator(),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            ],
-            const SizedBox(height: 16),
-            if (_balance != null) _buildBalanceCard(theme),
-          ],
-        ),
-      ),
-    );
-  }
+        children: [
+          Text(
+            'JERT Wallet',
+            style: theme.textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Address:',
+            style: theme.textTheme.labelMedium,
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            widget.address,
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
 
-  Widget _buildBalanceCard(ThemeData theme) {
-    final b = _balance!;
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          if (_isLoading) ...[
+            const Center(child: CircularProgressIndicator()),
+          ] else if (_error != null) ...[
             Text(
-              'Address:',
-              style: theme.textTheme.bodySmall,
-            ),
-            Text(
-              b.address.isEmpty ? _addressController.text.trim() : b.address,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+              'Error: $_error',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Balance',
-              style: theme.textTheme.titleMedium,
-            ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('JERT'),
-                Text(b.balanceJert.toStringAsFixed(4)),
-              ],
+            ElevatedButton(
+              onPressed: _loadBalance,
+              child: const Text('Retry'),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('USD (reference)'),
-                Text(b.balanceUsd.toStringAsFixed(2)),
-              ],
-            ),
-            const Divider(height: 20),
-            Text(
-              'Energy Equivalent',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('MWh (electric/thermal)'),
-                Text(b.energyMwh.toStringAsFixed(4)),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('MWh-cold (cryogenic)'),
-                Text(b.energyMwhCold.toStringAsFixed(4)),
-              ],
-            ),
+          ] else if (_balance != null) ...[
+            JertBalanceCard(balance: _balance!),
+          ] else ...[
+            const Text('No balance data'),
           ],
-        ),
+        ],
       ),
     );
   }
