@@ -1,20 +1,25 @@
 
 import 'package:flutter/material.dart';
+
 import '../services/wallet_service.dart';
 
 class HistoryScreen extends StatefulWidget {
+  final WalletService walletService;
   final String address;
 
-  const HistoryScreen({super.key, required this.address});
+  const HistoryScreen({
+    super.key,
+    required this.walletService,
+    required this.address,
+  });
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final _walletService = WalletService();
-  List<TxItem> _items = [];
-  bool _loading = false;
+  List<TxItem> _history = const [];
+  bool _isLoading = true;
   String? _error;
 
   @override
@@ -25,22 +30,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _loadHistory() async {
     setState(() {
-      _loading = true;
+      _isLoading = true;
       _error = null;
     });
 
     try {
-      final list = await _walletService.fetchHistory(widget.address);
+      final items =
+          await widget.walletService.fetchHistory(widget.address);
       setState(() {
-        _items = list;
+        _history = items;
+        _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to load history: $e';
-      });
-    } finally {
-      setState(() {
-        _loading = false;
+        _error = e.toString();
+        _isLoading = false;
       });
     }
   }
@@ -49,74 +53,66 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaction History'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
+    return RefreshIndicator(
+      onRefresh: _loadHistory,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            'Transaction History',
+            style: theme.textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          if (_isLoading) ...[
+            const Center(child: CircularProgressIndicator()),
+          ] else if (_error != null) ...[
             Text(
-              'Address: ${widget.address}',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            if (_loading) const LinearProgressIndicator(),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: const TextStyle(color: Colors.red),
+              'Error: $_error',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
               ),
-            ],
-            const SizedBox(height: 8),
-            Expanded(
-              child: _items.isEmpty && !_loading
-                  ? const Center(child: Text('No transactions found'))
-                  : ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final tx = _items[index];
-                        return ListTile(
-                          leading: Icon(
-                            tx.status.toLowerCase() == 'success'
-                                ? Icons.check_circle_outline
-                                : Icons.hourglass_bottom,
-                            color: tx.status.toLowerCase() == 'success'
-                                ? Colors.green
-                                : Colors.orange,
-                          ),
-                          title: Text(
-                            '${tx.amountJert.toStringAsFixed(4)} JERT',
-                            style: theme.textTheme.bodyLarge,
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('From: ${tx.from}'),
-                              Text('To:   ${tx.to}'),
-                              if (tx.timestamp != null)
-                                Text('Time: ${tx.timestamp}'),
-                            ],
-                          ),
-                          trailing: SizedBox(
-                            width: 60,
-                            child: Text(
-                              tx.hash.length > 10
-                                  ? '${tx.hash.substring(0, 6)}…${tx.hash.substring(tx.hash.length - 4)}'
-                                  : tx.hash,
-                              textAlign: TextAlign.right,
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
             ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: _loadHistory,
+              child: const Text('Retry'),
+            ),
+          ] else if (_history.isEmpty) ...[
+            const Text('No transactions yet'),
+          ] else ...[
+            for (final tx in _history)
+              Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  title: Text(
+                    'To: ${tx.to}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    'Hash: ${tx.hash}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${tx.amountJert.toStringAsFixed(4)} JERT',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      Text(
+                        tx.status,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
-        ),
+        ],
       ),
     );
   }
