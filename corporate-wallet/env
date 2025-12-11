@@ -3,3 +3,5 @@ VITE_EVM_RPC_URL=http://localhost:8545
 VITE_JERT_TOKEN_ADDRESS=0x...   # адрес JERTToken.sol
 VITE_TREASURY_MULTISIG_ADDRESS=0x...  # адрес TreasuryMultisig.sol
 VITE_JERT_API_URL=http://localhost:4000/api  # если ещё не прописал для API Gateway
+VITE_SEPOLIA_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
+VITE_DEFAULT_NETWORK="hardhat"
