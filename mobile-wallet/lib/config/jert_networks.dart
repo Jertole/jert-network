@@ -36,14 +36,13 @@ const Map<JertNetworkKey, JertNetworkInfo> jertNetworks = {
     jertTokenAddress: '0x0000000000000000000000000000000000000000',
     treasuryAddress: '0x0000000000000000000000000000000000000000',
   ),
-  JertNetworkKey.sepolia: JertNetworkInfo(
+ JertNetworkKey.sepolia: JertNetworkInfo(
     name: 'Sepolia',
     chainId: 11155111,
-    rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY',
+    rpcUrl: 'https://sepolia.infura.io/v3/c804f9d1cf174022b994886424a2d3ac',
     explorerUrl: 'https://sepolia.etherscan.io',
-    // потом подставишь реальные адреса токена и трежери
-    jertTokenAddress: '0x0000000000000000000000000000000000000000',
-    treasuryAddress: '0x0000000000000000000000000000000000000000',
+    jertTokenAddress: '0xaa8626c43ccf59317f71a5755fc7d65607daab0fa54d26d833df9ff9f6903cdd',
+    treasuryAddress: '0xАДРЕС_КАЗНАЧЕЙСТВА',
   ),
 };
 
