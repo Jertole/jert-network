@@ -1,4 +1,6 @@
 
+// lib/config/jert_token.dart
+
 import 'jert_networks.dart';
 
 /// Адреса JERT токена и казначейства по сети
@@ -36,3 +38,7 @@ String getDefaultJertTokenAddress() =>
 /// Адрес казначейства по умолчанию
 String getDefaultTreasuryAddress() =>
     getDefaultJertTokenConfig().treasuryAddress;
+
+/// Адрес токена по конкретному ключу сети
+String getJertTokenAddress(JertNetworkKey key) =>
+    jertTokenConfigs[key]!.tokenAddress;
