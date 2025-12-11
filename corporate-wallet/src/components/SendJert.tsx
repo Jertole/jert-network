@@ -28,7 +28,10 @@ export const SendJert: React.FC = () => {
     e.preventDefault();
     setError(null);
     setTxHash(null);
-
+  // сначала открываем PIN модалку
+  setPendingSubmitEvent(e);
+  setPinOpen(true);
+};
     if (!tokenAddress) {
       setError("JERT token address is not configured for this network.");
       setTxState("error");
