@@ -72,10 +72,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(walletService: _walletService),
-      HistoryScreen(walletService: _walletService),
-      SendScreen(walletService: _walletService),
-      SettingScreen(walletService: _walletService),
+      HomeScreen(address: _address),
+      HistoryScreen(address: _address),
+      SendScreen(fromAddress: _address),
+      SettingScreen(address: _address),
     ];
 
     return Scaffold(
