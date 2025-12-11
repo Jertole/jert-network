@@ -1,18 +1,19 @@
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+/// Простая обёртка над secure storage
 class LocalStorage {
-  LocalStorage._();
-  static final LocalStorage instance = LocalStorage._();
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  Future<SharedPreferences> get _prefs async => SharedPreferences.getInstance();
-
-  Future<String?> getString(String key) async {
-    final p = await _prefs;
-    return p.getString(key);
+  static Future<void> saveString(String key, String value) async {
+    await _storage.write(key: key, value: value);
   }
 
-  Future<void> setString(String key, String value) async {
-    final p = await _prefs;
-    await p.setString(key, value);
+  static Future<String?> readString(String key) async {
+    return _storage.read(key: key);
   }
+
+  static Future<void> delete(String key) async {
+    await _storage.delete(key: key);
+  }
+}
