@@ -43,10 +43,10 @@ const Map<JertNetworkKey, JertNetworkInfo> jertNetworks = {
 JertNetworkInfo get defaultJertNetworkInfo =>
     jertNetworks[defaultJertNetworkKey]!;
 
-/// Шорткаты, чтобы старый код типа jertRpcUrl/jertChainId не ломался
+/// Шорткаты для старого кода
 String get jertRpcUrl => defaultJertNetworkInfo.rpcUrl;
 int get jertChainId => defaultJertNetworkInfo.chainId;
 String get jertExplorerUrl => defaultJertNetworkInfo.explorerUrl;
 
-/// Базовый URL backend (потом заменим на реальный)
+/// Базовый URL backend (пока заглушка)
 String get jertApiBaseUrl => 'https://api.jert.network';
