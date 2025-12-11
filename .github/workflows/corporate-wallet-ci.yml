@@ -20,12 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Node.js 20 + кэш npm
+      # 2. Node.js 20 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'none'
           cache-dependency-path: corporate-wallet/package-lock.json
 
       # 3. Устанавливаем зависимости для corporate-wallet
