@@ -26,7 +26,7 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
   },
 };
 
-export const DEFAULT_NETWORK_KEY: NetworkKey = "hardhat";
+export const DEFAULT_NETWORK_KEY: NetworkKey = "sepolia";
 
 export function getDefaultNetwork(): NetworkConfig {
   const envKey = (import.meta.env.VITE_DEFAULT_NETWORK || "hardhat") as NetworkKey;
