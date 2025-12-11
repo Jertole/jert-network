@@ -1,31 +1,32 @@
 
 import 'package:flutter/material.dart';
 
-import 'screens/home_screen.dart';
-import 'screens/history_screen.dart';
-import 'screens/send_screen.dart';
-import 'screens/setting_screen.dart';
 import 'services/wallet_service.dart';
+import 'screens/home_screen.dart';
+import 'screens/send_screen.dart';
+import 'screens/history_screen.dart';
 
 void main() {
-  runApp(const JertApp());
+  runApp(const JertWalletApp());
 }
 
-class JertApp extends StatelessWidget {
-  const JertApp({super.key});
+class JertWalletApp extends StatelessWidget {
+  const JertWalletApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'JERT Mobile Wallet',
+      title: 'JERT Wallet',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
       ),
       home: const SplashScreen(),
     );
   }
 }
 
+/// Экран загрузки: создаёт WalletService и адрес, потом переходит на MainScreen.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -34,71 +35,99 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  final WalletService _walletService = WalletService();
+  late final WalletService _walletService;
 
   @override
   void initState() {
     super.initState();
-    _init();
+    _walletService = WalletService();
+    _initWallet();
   }
 
-  Future<void> _init() async {
-    await _walletService.createOrLoadPrivateKey();
+  Future<void> _initWallet() async {
+    final address = await _walletService.createOrLoadPrivateKey();
+
     if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScreen()),
+      MaterialPageRoute(
+        builder: (_) => MainScreen(
+          walletService: _walletService,
+          address: address,
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }
 
+/// Основной экран с bottom navigation: Home / Send / History.
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final WalletService walletService;
+  final String address;
+
+  const MainScreen({
+    super.key,
+    required this.walletService,
+    required this.address,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _index = 0;
-  final WalletService _walletService = WalletService();
+  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeScreen(address: _address),
-      HistoryScreen(address: _address),
-      SendScreen(fromAddress: _address),
-      SettingScreen(address: _address),
+    final pages = <Widget>[
+      HomeScreen(
+        walletService: widget.walletService,
+        address: widget.address,
+      ),
+      SendScreen(
+        walletService: widget.walletService,
+        fromAddress: widget.address,
+      ),
+      HistoryScreen(
+        walletService: widget.walletService,
+        address: widget.address,
+      ),
     ];
 
     return Scaffold(
-      body: pages[_index],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: pages,
+      ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
+        currentIndex: _selectedIndex,
+        onTap: (idx) {
+          setState(() {
+            _selectedIndex = idx;
+          });
+        },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.send),
             label: 'Send',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: Icon(Icons.history),
+            label: 'History',
           ),
         ],
       ),
