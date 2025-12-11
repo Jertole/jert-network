@@ -18,7 +18,7 @@ export const Dashboard: React.FC = () => {
         gap: 24,
       }}
     >
-      {/* Верхняя панель с заголовком и слоганом */}
+      {/* HEADER */}
       <header
         style={{
           display: "flex",
@@ -47,6 +47,7 @@ export const Dashboard: React.FC = () => {
             >
               JERT Corporate Wallet
             </h1>
+
             <p
               style={{
                 margin: "6px 0 0",
@@ -76,7 +77,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Основная сетка */}
+      {/* MAIN GRID */}
       <main
         style={{
           display: "grid",
@@ -84,9 +85,9 @@ export const Dashboard: React.FC = () => {
           gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1.2fr)",
         }}
       >
-        {/* Левая колонка: баланс + отправка */}
+        {/* LEFT SIDE */}
         <section
-          aria-label="Balance and transfers"
+          aria-label="Balance and transfer section"
           style={{
             display: "grid",
             gap: 20,
@@ -101,7 +102,7 @@ export const Dashboard: React.FC = () => {
                 opacity: 0.9,
               }}
             >
-              Treasury & token balance
+              Treasury & Token Balance
             </h2>
             <JertBalance />
           </div>
@@ -121,7 +122,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </section>
 
-        {/* Правая колонка: мультисиг */}
+        {/* RIGHT SIDE */}
         <section
           aria-label="Multisig overview"
           style={{
@@ -138,7 +139,7 @@ export const Dashboard: React.FC = () => {
               opacity: 0.9,
             }}
           >
-            Treasury multisig status
+            Treasury Multisig Status
           </h2>
           <MultisigOverview />
         </section>
