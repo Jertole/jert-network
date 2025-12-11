@@ -72,8 +72,12 @@ class WalletService {
   Future<String> createOrLoadPrivateKey() async {
     if (_address != null) return _address!;
 
+    // Генерируем новый приватный ключ
     _credentials = EthPrivateKey.createRandom(Random.secure());
-   // ignore: deprecated_member_use final addr = await _credentials!.extractAddress();
+
+    // ignore: deprecated_member_use
+    final ethAddress = await _credentials!.extractAddress();
+
     _address = ethAddress.hexEip55;
     return _address!;
   }
