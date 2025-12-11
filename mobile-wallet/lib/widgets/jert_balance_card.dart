@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import '../config/jert_networks.dart';
+import '../config/jert_networks_config.dart';
 import '../config/jert_token.dart';
 
 class JertBalanceCard extends StatefulWidget {
