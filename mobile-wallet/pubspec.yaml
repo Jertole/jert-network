@@ -1,41 +1,51 @@
-name: jert_mobile_wallet
-description: JERT non-custodial mobile wallet (MVP scaffolding)
-publish_to: "none"
+name: mobile_wallet
+description: JERT Mobile Wallet App
+publish_to: 'none'
+
+version: 1.0.0+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-   
+
   cupertino_icons: ^1.0.8
 
-  # EVM + HTTP
-  web3dart: ^2.7.2
-  http: ^1.2.2
-
-  # Хранение приватного ключа и настроек
-  flutter_secure_storage: ^9.2.2
-  shared_preferences: ^2.3.2
-
-  # QR-код для экрана Receive
-  qr_flutter: ^4.1.0
-
-  # Форматирование чисел
-  intl: ^0.19.0 
-
+  # Main networking
   http: ^1.1.0
-  shared_preferences: ^2.2.2
+
+  # State management
+  provider: ^6.1.2
+
+  # Local secure storage
+  flutter_secure_storage: ^9.0.0
+
+  # PIN & biometrics
+  local_auth: ^2.2.0
+  pinput: ^3.0.1
+
+  # QR codes
   qr_flutter: ^4.1.0
+
+  # JSON parsing
+  json_annotation: ^4.9.0
+
+  # Mobile UI helpers
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.6
+  json_serializable: ^6.7.1
+
 flutter:
   uses-material-design: true
-  flutter pub get
-flutter:
+
   assets:
-    - assets/config/contract-addresses.json
+    - assets/images/
+    - assets/icons/
