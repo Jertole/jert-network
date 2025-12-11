@@ -1,11 +1,10 @@
 
-import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:web3dart/web3dart.dart';
+import 'dart:async';
 import 'package:http/http.dart' as http;
-
-import '../config.dart';
+import 'package:web3dart/web3dart.dart';
+import 'package:jert_network/config/jert_networks.dart';
+import 'package:jert_network/config/jert_network_config.dart';
+import 'package:jert_network/config/jert_token.dart';
 
 class WalletService {
   static const _storage = FlutterSecureStorage();
