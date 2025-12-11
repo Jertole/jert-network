@@ -1,42 +1,48 @@
 
-import 'jert_networks.dart';
-import 'jert_token.dart';
+// lib/config/jert_network_config.dart
 
-/// Конфиг сети JERT для UI (баланс, адреса и т.п.)
+import 'package:jert_network/config/jert_networks.dart';
+
+/// Конфигурация текущей сети JERT.
+/// Этот класс позволяет UI переключаться между Hardhat/Sepolia и
+/// получать правильные адреса токена, трежери и RPC.
+
 class JertNetworkConfig {
   final JertNetworkKey networkKey;
-  final String networkName;
-  final String rpcUrl;
-  final int chainId;
-  final String explorerUrl;
-  final String jertTokenAddress;
-  final String treasuryAddress;
+  final JertNetworkInfo info;
 
   const JertNetworkConfig({
     required this.networkKey,
-    required this.networkName,
-    required this.rpcUrl,
-    required this.chainId,
-    required this.explorerUrl,
-    required this.jertTokenAddress,
-    required this.treasuryAddress,
+    required this.info,
   });
+
+  /// RPC URL для Web3 клиента
+  String get rpcUrl => info.rpcUrl;
+
+  /// Chain ID сети
+  int get chainId => info.chainId;
+
+  /// Адрес токена JERT в этой сети
+  String get tokenAddress => info.jertTokenAddress;
+
+  /// Адрес казначейства в этой сети
+  String get treasuryAddress => info.treasuryAddress;
+
+  /// URL эксплорера (если есть)
+  String get explorer => info.explorerUrl;
 }
 
-/// Конфиг сети по умолчанию
-JertNetworkConfig getDefaultJertNetworkConfig() {
-  final info = defaultJertNetworkInfo;
+/// Глобальная конфигурация по умолчанию — используется приложением,
+/// пока пользователь не выберет другую сеть.
+final JertNetworkConfig defaultJertNetworkConfig = JertNetworkConfig(
+  networkKey: defaultJertNetworkKey,
+  info: defaultJertNetworkInfo,
+);
 
-  return JertNetworkConfig(
-    networkKey: defaultJertNetworkKey,
-    networkName: info.name,
-    rpcUrl: info.rpcUrl,
-    chainId: info.chainId,
-    explorerUrl: info.explorerUrl,
-    jertTokenAddress: getDefaultJertTokenAddress(),
-    treasuryAddress: getDefaultTreasuryAddress(),
-  );
-}
+/// Функция для получения текущего трежери в UI
+String getDefaultTreasuryAddress() =>
+    defaultJertNetworkConfig.treasuryAddress;
 
-/// Для старого кода, который зовёт getDefaultJertNetwork()
-JertNetworkConfig getDefaultJertNetwork() => getDefaultJertNetworkConfig();
+/// Функция для получения адреса токена JERT
+String getDefaultJertTokenAddress() =>
+    defaultJertNetworkConfig.tokenAddress;
