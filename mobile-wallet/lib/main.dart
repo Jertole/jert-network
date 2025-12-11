@@ -364,7 +364,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => OnboardingScreen(walletService: widget.walletService),
+            builder: (_) =>
+                OnboardingScreen(walletService: widget.walletService),
           ),
         );
         return;
@@ -399,9 +400,18 @@ class _HomeScreenState extends State<HomeScreen> {
         : '${_address.toString().substring(0, 8)}…${_address.toString().substring(_address.toString().length - 4)}';
 
     return Scaffold(
+      backgroundColor: const Color(0xFF05050A),
       appBar: AppBar(
-        title: const Text("JERT Wallet"),
-        centerTitle: true,
+        backgroundColor: const Color(0xFF05050A),
+        elevation: 0,
+        centerTitle: false,
+        title: const Text(
+          "JERT Wallet",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -417,16 +427,60 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              // НЕОНОВАЯ ШАПКА С СЛОГАНОМ
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF00E5FF),
+                      Color(0xFF00FF9D),
+                      Color(0xFFB000FF),
+                    ],
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Building the Green Cold\nEnergy Network across Eurasia',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'JERT • Treasury & operations wallet',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Padding(
+
+              const SizedBox(height: 20),
+
+              // ОСНОВНАЯ КАРТОЧКА С БАЛАНСОМ
+              Container,
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF060612),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFF222222)),
+                ),
                 padding: const EdgeInsets.all(16),
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
@@ -435,7 +489,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           const Text(
                             "Address",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -443,12 +500,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontFamily: 'monospace',
+                              color: Colors.white,
                             ),
                           ),
                           const SizedBox(height: 16),
                           const Text(
                             "Balance",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -456,108 +517,170 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             "$_ethBalance ETH (for gas)",
                             style: const TextStyle(
-                                fontSize: 12, color: Colors.grey),
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _address == null
-                        ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ReceiveScreen(address: _address!),
-                              ),
-                            );
-                          },
-                    icon: const Icon(Icons.call_received),
-                    label: const Text("Receive"),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _address == null
-                        ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => SendScreen(
-                                  walletService: widget.walletService,
-                                  from: _address!,
+
+              const SizedBox(height: 16),
+
+              // КНОПКИ RECEIVE / SEND В НЕОНОВОМ СТИЛЕ
+              Row(
+                children: [
+                  Expanded(
+                    child: _NeonActionButton(
+                      label: 'Receive',
+                      icon: Icons.call_received,
+                      onTap: _address == null
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ReceiveScreen(address: _address!),
                                 ),
-                              ),
-                            );
-                          },
-                    icon: const Icon(Icons.call_made),
-                    label: const Text("Send"),
+                              );
+                            },
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Recent transactions (from API Gateway)",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            if (_history.isEmpty)
-              const Text(
-                "No history yet.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              )
-            else
-              Column(
-                children: _history.take(5).map((tx) {
-                  final hash = (tx['hash'] ?? '') as String;
-                  final to = (tx['to'] ?? '') as String;
-                  final value = (tx['valueEth'] ?? '0') as String;
-                  return ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      '$value ETH',
-                      style: const TextStyle(fontSize: 13),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _NeonActionButton(
+                      label: 'Send',
+                      icon: Icons.call_made,
+                      onTap: _address == null
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => SendScreen(
+                                    walletService: widget.walletService,
+                                    from: _address!,
+                                  ),
+                                ),
+                              );
+                            },
                     ),
-                    subtitle: Text(
-                      to,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                    trailing: Text(
-                      hash.isEmpty ? '' : '${hash.substring(0, 6)}…',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
-          ],
+
+              const SizedBox(height: 24),
+
+              const Text(
+                "Recent transactions (from API Gateway)",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+
+              if (_history.isEmpty)
+                const Text(
+                  "No history yet.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                )
+              else
+                Column(
+                  children: _history.take(5).map((tx) {
+                    final hash = (tx['hash'] ?? '') as String;
+                    final to = (tx['to'] ?? '') as String;
+                    final value = (tx['valueEth'] ?? '0') as String;
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        '$value ETH',
+                        style:
+                            const TextStyle(fontSize: 13, color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        to,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                          color: Colors.grey,
+                        ),
+                      ),
+                      trailing: Text(
+                        hash.isEmpty ? '' : '${hash.substring(0, 6)}…',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                          color: Colors.grey,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+class _NeonActionButton extends StatelessWidget {
+  const _NeonActionButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: enabled ? const Color(0xFF00E5FF) : const Color(0xFF333333),
+          ),
+          color: const Color(0xFF060612),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: enabled ? const Color(0xFF00E5FF) : Colors.grey,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: enabled ? Colors.white : Colors.grey,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 /// RECEIVE
 class ReceiveScreen extends StatelessWidget {
   final EthereumAddress address;
