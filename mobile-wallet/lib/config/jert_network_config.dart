@@ -29,3 +29,6 @@ String getDefaultTreasuryAddress() =>
 
 String getDefaultJertTokenAddress() =>
     defaultJertNetworkConfig.tokenAddress;
+
+/// Для старого кода, который вызывает getDefaultJertNetwork()
+JertNetworkConfig getDefaultJertNetwork() => defaultJertNetworkConfig;
