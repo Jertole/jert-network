@@ -15,6 +15,9 @@ export const SendJert: React.FC = () => {
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pendingSubmitEvent, setPendingSubmitEvent] =
+  useState<React.FormEvent | null>(null);
 
   const network = getDefaultNetwork();
   const tokenAddress = getJertTokenAddress(DEFAULT_NETWORK_KEY);
