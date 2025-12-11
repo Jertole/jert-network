@@ -1,101 +1,105 @@
---import 'api_service.dart';
 
-class WalletService {
-  final ApiService api;
+import 'dart:math';
+import 'dart:typed_data';
 
-  WalletService({ApiService? apiService}) : api = apiService ?? ApiService();
+import 'package:http/http.dart' as http;
+import 'package:web3dart/web3dart.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-  Future<WalletBalance> fetchBalance(String address) async {
-    final json = await api.getBalance(address);
-    return WalletBalance.fromJson(json);
-  }
+import 'package:jert_network/config/jert_networks.dart';
+import 'package:jert_network/config/jert_token.dart';
 
-  Future<List<TxItem>> fetchHistory(String address) async {
-    final list = await api.getHistory(address);
-    return list.map((e) => TxItem.fromJson(e)).toList();
-  }
-
-  Future<String> sendJert({
-    required String from,
-    required String to,
-    required String amountJert,
-  }) async {
-    return api.sendTransaction(from: from, to: to, amountJert: amountJert);
-  }
-}
-
+/// Информация о балансе кошелька
 class WalletBalance {
-  final String address;
-  final double balanceJert;
-  final double balanceUsd;
-  final double energyMwh;
-  final double energyMwhCold;
+  final EtherAmount nativeBalance;
+  final BigInt tokenBalance;
 
-  WalletBalance({
-    required this.address,
-    required this.balanceJert,
-    required this.balanceUsd,
-    required this.energyMwh,
-    required this.energyMwhCold,
+  const WalletBalance({
+    required this.nativeBalance,
+    required this.tokenBalance,
   });
-
-  factory WalletBalance.fromJson(Map<String, dynamic> json) {
-    double parseNum(dynamic v) {
-      if (v == null) return 0.0;
-      if (v is num) return v.toDouble();
-      if (v is String) return double.tryParse(v) ?? 0.0;
-      return 0.0;
-    }
-
-    return WalletBalance(
-      address: json['address']?.toString() ?? '',
-      balanceJert: parseNum(json['balanceJert'] ?? json['jert']),
-      balanceUsd: parseNum(json['balanceUsd'] ?? json['usd']),
-      energyMwh: parseNum(json['energyMwh'] ?? json['mwh']),
-      energyMwhCold: parseNum(json['energyMwhCold'] ?? json['mwhCold']),
-    );
-  }
 }
 
+/// Простейший элемент истории транзакций
 class TxItem {
   final String hash;
-  final String from;
-  final String to;
-  final double amountJert;
-  final String status;
-  final DateTime? timestamp;
+  final BigInt value;
+  final DateTime timestamp;
 
-  TxItem({
+  const TxItem({
     required this.hash,
-    required this.from,
-    required this.to,
-    required this.amountJert,
-    required this.status,
-    this.timestamp,
+    required this.value,
+    required this.timestamp,
   });
+}
 
-  factory TxItem.fromJson(Map<String, dynamic> json) {
-    double parseNum(dynamic v) {
-      if (v == null) return 0.0;
-      if (v is num) return v.toDouble();
-      if (v is String) return double.tryParse(v) ?? 0.0;
-      return 0.0;
+/// Основной сервис кошелька JERT для mobile-wallet
+class WalletService {
+  WalletService()
+      : _client = Web3Client(jertRpcUrl, http.Client());
+
+  final Web3Client _client;
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+
+  static const _privateKeyKey = 'jert_private_key';
+
+  /// Создать или получить уже сохранённый приватный ключ
+  Future<String> createOrLoadPrivateKey() async {
+    final existing = await _storage.read(key: _privateKeyKey);
+    if (existing != null && existing.isNotEmpty) {
+      return existing;
     }
 
-    DateTime? ts;
-    if (json['timestamp'] != null) {
-      try {
-        ts = DateTime.parse(json['timestamp'].toString());
-      } catch (_) {}
+    final rng = Random.secure();
+    final credentials = EthPrivateKey.createRandom(rng);
+    final pkHex = _bytesToHex(credentials.privateKey);
+    await _storage.write(key: _privateKeyKey, value: pkHex);
+    return pkHex;
+  }
+
+  /// Получить адрес кошелька по сохранённому приватному ключу
+  Future<EthereumAddress?> getAddress() async {
+    final pk = await _storage.read(key: _privateKeyKey);
+    if (pk == null || pk.isEmpty) return null;
+
+    final credentials = EthPrivateKey.fromHex(pk);
+    return credentials.address;
+  }
+
+  /// Загрузить баланс (native + JERT токен)
+  Future<WalletBalance> loadBalance() async {
+    final address = await getAddress();
+    if (address == null) {
+      return WalletBalance(
+        nativeBalance: EtherAmount.zero(),
+        tokenBalance: BigInt.zero,
+      );
     }
 
-    return TxItem(
-      hash: json['hash']?.toString() ?? '',
-      from: json['from']?.toString() ?? '',
-      to: json['to']?.toString() ?? '',
-      amountJert: parseNum(json['amountJert'] ?? json['amount']),
-      status: json['status']?.toString() ?? 'unknown',
-      timestamp: ts,
+    final native = await _client.getBalance(address);
+
+    // Тут можно будет добавить реальный вызов контракта JERT
+    // Пока заглушка
+    final token = BigInt.zero;
+
+    return WalletBalance(
+      nativeBalance: native,
+      tokenBalance: token,
     );
+  }
+
+  /// Заглушка для истории транзакций
+  Future<List<TxItem>> loadTxHistory() async {
+    // TODO: подключить реальный backend / explorer API
+    return <TxItem>[];
+  }
+
+  /// Хелпер: bytes -> hex
+  String _bytesToHex(Uint8List bytes) {
+    final StringBuffer buffer = StringBuffer();
+    for (final b in bytes) {
+      buffer.write(b.toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString();
   }
 }
