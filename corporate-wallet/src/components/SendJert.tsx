@@ -5,6 +5,7 @@ import JERTTokenABI from "../abi/JERTToken.json";
 import { DEFAULT_NETWORK_KEY, getDefaultNetwork } from "../config/networks";
 import { getJertTokenAddress } from "../config/jertToken";
 import { getBrowserSigner } from "../lib/ethereum";
+import { PinModal } from "./PinModal";
 
 type TxState = "idle" | "signing" | "pending" | "success" | "error";
 
