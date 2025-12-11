@@ -450,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: (const) 
                     Text(
                       'Building the Green Cold\nEnergy Network across Eurasia',
                       style: TextStyle(
