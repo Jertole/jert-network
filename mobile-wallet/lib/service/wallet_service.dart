@@ -1,239 +1,104 @@
+// lib/services/wallet_service.dart
 
-import 'dart:async';
+import 'dart:math';
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
-import 'package:jert_network/config/jert_networks.dart';
-import 'package:jert_network/config/jert_network_config.dart';
-import 'package:jert_network/config/jert_token.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../config/jert_networks.dart';
+
+/// Информация о балансе кошелька
+class WalletBalance {
+  final EtherAmount nativeBalance;
+  final BigInt tokenBalance;
+
+  const WalletBalance({
+    required this.nativeBalance,
+    required this.tokenBalance,
+  });
+}
+
+/// Простейший элемент истории транзакций
+class TxItem {
+  final String hash;
+  final BigInt value;
+  final DateTime timestamp;
+
+  const TxItem({
+    required this.hash,
+    required this.value,
+    required this.timestamp,
+  });
+}
+
+/// Основной сервис кошелька JERT для mobile-wallet
 class WalletService {
-  static const _storage = FlutterSecureStorage();
-  static const _pkKey = 'jert_wallet_private_key';
-  static const _pinKey = 'jert_wallet_pin';
+  WalletService()
+      : _client = Web3Client(jertRpcUrl, http.Client());
 
   final Web3Client _client;
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  WalletService() : _client = Web3Client(jertRpcUrl, http.Client());
+  static const _privateKeyKey = 'jert_private_key';
 
-  Web3Client get client => _client;
-
-  /// Уже есть кошелёк?
-  Future<bool> hasWallet() async {
-    final pk = await _storage.read(key: _pkKey);
-    return pk != null && pk.isNotEmpty;
-  }
-
-  /// Есть ли PIN?
-  Future<bool> hasPin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_pinKey);
-    return stored != null && stored.isNotEmpty;
-  }
-
-  /// Установить / сменить PIN
-  Future<void> setPin(String pin) async {
-    await _savePin(pin);
-  }
-
-  /// Создать кошелёк
-  Future<EthereumAddress> createWallet({String? pin}) async {
-    final creds = EthPrivateKey.createRandom();
-    final pkHex = bytesToHex(creds.privateKey, include0x: true);
-
-    await _storage.write(key: _pkKey, value: pkHex);
-    if (pin != null && pin.isNotEmpty) {
-      await _savePin(pin);
+  /// Создать или получить уже сохранённый приватный ключ
+  Future<String> createOrLoadPrivateKey() async {
+    final existing = await _storage.read(key: _privateKeyKey);
+    if (existing != null && existing.isNotEmpty) {
+      return existing;
     }
 
-    return creds.address;
+    final rng = Random.secure();
+    final credentials = EthPrivateKey.createRandom(rng);
+    final pkHex = _bytesToHex(credentials.privateKey);
+    await _storage.write(key: _privateKeyKey, value: pkHex);
+    return pkHex;
   }
 
-  /// Импорт кошелька
-  Future<EthereumAddress> importWallet(String privateKey, {String? pin}) async {
-    final pkTrimmed = privateKey.trim();
-    if (!pkTrimmed.startsWith('0x') || pkTrimmed.length < 10) {
-      throw ArgumentError('Invalid private key format');
-    }
-
-    final creds = EthPrivateKey.fromHex(pkTrimmed);
-
-    await _storage.write(key: _pkKey, value: pkTrimmed);
-    if (pin != null && pin.isNotEmpty) {
-      await _savePin(pin);
-    }
-
-    return creds.address;
-  }
-
-  Future<void> _savePin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_pinKey, pin);
-  }
-
-  Future<bool> verifyPin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_pinKey);
-    return stored != null && stored == pin;
-  }
-
-  /// Адрес кошелька
+  /// Получить адрес кошелька по сохранённому приватному ключу
   Future<EthereumAddress?> getAddress() async {
-    final pk = await _storage.read(key: _pkKey);
-    if (pk == null) return null;
-    final creds = EthPrivateKey.fromHex(pk);
-    return creds.address;
-  }
-
-  /// Баланс ETH
-  Future<EtherAmount> getEthBalance(EthereumAddress address) async {
-    return _client.getBalance(address);
-  }
-
-  /// Баланс JERT (ERC-20)
-  Future<BigInt> getJertBalance(EthereumAddress address) async {
-    final contract = DeployedContract(
-      ContractAbi.fromJson(_jertAbiJson, 'JERTToken'),
-      EthereumAddress.fromHex(jertTokenAddress),
-    );
-
-    final balanceOf = contract.function('balanceOf');
-
-    final result = await _client.call(
-      contract: contract,
-      function: balanceOf,
-      params: [address],
-    );
-
-    return result.first as BigInt;
-  }
-
-  /// Отправка JERT
-  Future<String> sendJert({
-    required String to,
-    required BigInt amount,
-  }) async {
-    final pk = await _storage.read(key: _pkKey);
-    if (pk == null) {
-      throw StateError('Wallet not initialized');
-    }
+    final pk = await _storage.read(key: _privateKeyKey);
+    if (pk == null || pk.isEmpty) return null;
 
     final credentials = EthPrivateKey.fromHex(pk);
-
-    final contract = DeployedContract(
-      ContractAbi.fromJson(_jertAbiJson, 'JERTToken'),
-      EthereumAddress.fromHex(jertTokenAddress),
-    );
-
-    final transfer = contract.function('transfer');
-
-    final tx = Transaction.callContract(
-      contract: contract,
-      function: transfer,
-      parameters: [EthereumAddress.fromHex(to), amount],
-      chainId: jertChainId,
-    );
-
-    final txHash = await _client.sendTransaction(
-      credentials,
-      tx,
-      chainId: jertChainId,
-    );
-
-    return txHash;
+    return credentials.address;
   }
 
-  /// Отправка ETH
-  Future<String> sendEth({
-    required String to,
-    required EtherAmount amount,
-  }) async {
-    final pk = await _storage.read(key: _pkKey);
-    if (pk == null) {
-      throw StateError('Wallet not initialized');
+  /// Загрузить баланс (native + JERT токен)
+  Future<WalletBalance> loadBalance() async {
+    final address = await getAddress();
+    if (address == null) {
+      return WalletBalance(
+        nativeBalance: EtherAmount.zero(),
+        tokenBalance: BigInt.zero,
+      );
     }
 
-    final credentials = EthPrivateKey.fromHex(pk);
+    final native = await _client.getBalance(address);
 
-    final tx = Transaction(
-      to: EthereumAddress.fromHex(to),
-      value: amount,
-      chainId: jertChainId,
+    // TODO: вызвать JERT токен контракт, пока заглушка
+    final token = BigInt.zero;
+
+    return WalletBalance(
+      nativeBalance: native,
+      tokenBalance: token,
     );
-
-    final txHash = await _client.sendTransaction(
-      credentials,
-      tx,
-      chainId: jertChainId,
-    );
-
-    return txHash;
   }
 
-  /// История транзакций через API Gateway
-  Future<List<Map<String, dynamic>>> getTransactionHistory() async {
-    final addr = await getAddress();
-    if (addr == null) return [];
-
-    final addrStr = addr.toString();
-    final uri = Uri.parse('$jertApiBaseUrl/tx/history?address=$addrStr');
-
-    final resp = await http.get(uri, headers: {
-      'Accept': 'application/json',
-    });
-
-    if (resp.statusCode != 200) {
-      return [];
-    }
-
-    final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
-    final raw = decoded['items'] as List<dynamic>? ?? [];
-
-    return raw
-        .whereType<Map<String, dynamic>>()
-        .toList();
+  /// Заглушка для истории транзакций
+  Future<List<TxItem>> loadTxHistory() async {
+    // TODO: подключить реальный backend / explorer API
+    return <TxItem>[];
   }
 
-  /// Минимальный ABI JERTToken
-  static const String _jertAbiJson = '''
-  [
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "name",
-      "outputs": [{"name": "", "type": "string"}],
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "symbol",
-      "outputs": [{"name": "", "type": "string"}],
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "decimals",
-      "outputs": [{"name": "", "type": "uint8"}],
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [{"name": "account", "type": "address"}],
-      "name": "balanceOf",
-      "outputs": [{"name": "", "type": "uint256"}],
-      "type": "function"
-    },
-    {
-      "constant": false,
-      "inputs": [
-        {"name": "recipient", "type": "address"},
-        {"name": "amount", "type": "uint256"}
-      ],
-      "name": "transfer",
-      "outputs": [{"name": "", "type": "bool"}],
-      "type": "function"
+  /// Хелпер: bytes -> hex
+  String _bytesToHex(Uint8List bytes) {
+    final StringBuffer buffer = StringBuffer();
+    for (final b in bytes) {
+      buffer.write(b.toRadixString(16).padLeft(2, '0'));
     }
-  ]
-  ''';
+    return buffer.toString();
+  }
 }
