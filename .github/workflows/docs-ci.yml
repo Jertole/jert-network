@@ -1,1 +1,32 @@
 
+on:
+  push:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-ci.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-ci.yml"
+
+jobs:
+  validate-json:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate contract-addresses.json
+        run: |
+          FILE="docs/contract-addresses.json"
+
+          if [ ! -f "$FILE" ]; then
+            echo "No $FILE found, skipping validation."
+            exit 0
+          fi
+
+          echo "Validating $FILE..."
+          python -m json.tool "$FILE" > /dev/null
+          echo "JSON is valid ✅"
+
