@@ -32,3 +32,18 @@ export function getDefaultNetwork(): NetworkConfig {
   const envKey = (import.meta.env.VITE_DEFAULT_NETWORK || "hardhat") as NetworkKey;
   return NETWORKS[envKey] ?? NETWORKS.hardhat;
 }
+const config: HardhatUserConfig = {
+  // ...остальной конфиг
+  networks: {
+    hardhat: {
+      chainId: 31337,
+    },
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || "",
+      accounts: process.env.SEPOLIA_TREASURY_PRIVATE_KEY
+        ? [process.env.SEPOLIA_TREASURY_PRIVATE_KEY]
+        : [],
+      chainId: 11155111,
+    },
+  },
+};
