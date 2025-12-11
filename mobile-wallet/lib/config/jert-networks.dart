@@ -20,6 +20,9 @@ class JertNetworkInfo {
   });
 }
 
+/// Сеть по умолчанию (сейчас — Sepolia)
+const JertNetworkKey defaultJertNetworkKey = JertNetworkKey.sepolia;
+
 /// Карта сетей по ключу
 const Map<JertNetworkKey, JertNetworkInfo> jertNetworks = {
   JertNetworkKey.hardhat: JertNetworkInfo(
@@ -36,8 +39,14 @@ const Map<JertNetworkKey, JertNetworkInfo> jertNetworks = {
   ),
 };
 
-/// Сеть по умолчанию для мобильного кошелька
-const JertNetworkKey defaultJertNetworkKey = JertNetworkKey.sepolia;
-
+/// Удобный доступ к сети по умолчанию
 JertNetworkInfo get defaultJertNetworkInfo =>
     jertNetworks[defaultJertNetworkKey]!;
+
+/// Шорткаты, чтобы старый код типа jertRpcUrl/jertChainId не ломался
+String get jertRpcUrl => defaultJertNetworkInfo.rpcUrl;
+int get jertChainId => defaultJertNetworkInfo.chainId;
+String get jertExplorerUrl => defaultJertNetworkInfo.explorerUrl;
+
+/// Базовый URL backend (потом заменим на реальный)
+String get jertApiBaseUrl => 'https://api.jert.network';
