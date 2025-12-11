@@ -5,10 +5,12 @@ import '../services/wallet_service.dart';
 
 class SendScreen extends StatefulWidget {
   final String fromAddress;
+  final WalletService walletService;
 
   const SendScreen({
     super.key,
     required this.fromAddress,
+    required this.walletService,
   });
 
   @override
@@ -20,19 +22,9 @@ class _SendScreenState extends State<SendScreen> {
   final _toController = TextEditingController();
   final _amountController = TextEditingController();
 
-  late final WalletService _walletService;
-
   bool _isSending = false;
   String? _lastTxHash;
   String? _errorText;
-
-  @override
-  void initState() {
-    super.initState();
-    _walletService = WalletService();
-    // запустим создание/загрузку ключа, чтобы не падать при отправке
-    _walletService.createOrLoadPrivateKey();
-  }
 
   @override
   void dispose() {
@@ -42,9 +34,7 @@ class _SendScreenState extends State<SendScreen> {
   }
 
   Future<void> _onSendPressed() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isSending = true;
@@ -65,24 +55,23 @@ class _SendScreenState extends State<SendScreen> {
         return;
       }
 
-      // Переводим JERT/ETH в wei (1e18)
-      final BigInt amountWei =
-          BigInt.from((amount * 1e18).round());
+      // Перевод JERT → wei (1e18)
+      final BigInt amountWei = BigInt.from((amount * 1e18).round());
 
-      final hash = await _walletService.sendJert(
+      final txHash = await widget.walletService.sendJert(
         fromAddress: widget.fromAddress,
         toAddress: to,
         amountWei: amountWei,
       );
 
       setState(() {
-        _lastTxHash = hash;
+        _lastTxHash = txHash;
         _isSending = false;
       });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Transaction sent')),
+        const SnackBar(content: Text('Transaction sent successfully')),
       );
     } catch (e) {
       setState(() {
@@ -101,10 +90,10 @@ class _SendScreenState extends State<SendScreen> {
         title: const Text('Send JERT'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Адрес отправителя (read-only)
+            // Отправитель
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -117,64 +106,62 @@ class _SendScreenState extends State<SendScreen> {
               widget.fromAddress,
               style: theme.textTheme.bodySmall,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             Form(
               key: _formKey,
               child: Column(
                 children: [
+                  // Адрес получателя
                   TextFormField(
                     controller: _toController,
                     decoration: const InputDecoration(
-                      labelText: 'To address',
-                      hintText: '0x...',
+                      labelText: "To address (0x...)",
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter destination address';
-                      }
-                      if (!value.trim().startsWith('0x') ||
-                          value.trim().length < 10) {
-                        return 'Looks like invalid address';
+                      final v = value?.trim() ?? '';
+                      if (v.isEmpty) return 'Enter destination address';
+                      if (!v.startsWith("0x") || v.length < 10) {
+                        return 'Invalid Ethereum address';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
+
+                  // Сумма
                   TextFormField(
                     controller: _amountController,
                     decoration: const InputDecoration(
-                      labelText: 'Amount (JERT)',
+                      labelText: "Amount (JERT)",
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter amount';
-                      }
-                      final parsed = double.tryParse(
-                          value.trim().replaceAll(',', '.'));
-                      if (parsed == null || parsed <= 0) {
-                        return 'Invalid amount';
-                      }
+                      final v = value?.trim() ?? '';
+                      if (v.isEmpty) return "Enter amount";
+                      final n = double.tryParse(v.replaceAll(",", "."));
+                      if (n == null || n <= 0) return "Invalid amount";
                       return null;
                     },
                   ),
                   const SizedBox(height: 24),
+
+                  // Кнопка отправки
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isSending ? null : _onSendPressed,
                       child: _isSending
                           ? const SizedBox(
-                              height: 20,
                               width: 20,
+                              height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Send'),
+                          : const Text("Send"),
                     ),
                   ),
                 ],
@@ -183,20 +170,23 @@ class _SendScreenState extends State<SendScreen> {
 
             const SizedBox(height: 16),
 
+            // Ошибка
             if (_errorText != null) ...[
               Text(
                 _errorText!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.error),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
             ],
 
+            // Хеш последней транзакции
             if (_lastTxHash != null) ...[
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Last tx hash:',
+                  "Last tx hash:",
                   style: theme.textTheme.labelMedium,
                 ),
               ),
