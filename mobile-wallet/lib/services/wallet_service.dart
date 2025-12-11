@@ -74,7 +74,7 @@ class WalletService {
 
     _credentials = EthPrivateKey.createRandom(Random.secure());
    // ignore: deprecated_member_use final addr = await _credentials!.extractAddress();
-    _address = addr.hexEip55;
+    _address = ethAddress.hexEip55;
     return _address!;
   }
 
