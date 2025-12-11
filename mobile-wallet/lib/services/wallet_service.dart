@@ -1,4 +1,3 @@
-// lib/services/wallet_service.dart
 
 import 'dart:math';
 
@@ -74,7 +73,7 @@ class WalletService {
     if (_address != null) return _address!;
 
     _credentials = EthPrivateKey.createRandom(Random.secure());
-    final addr = await _credentials!.extractAddress();
+   // ignore: deprecated_member_use final addr = await _credentials!.extractAddress();
     _address = addr.hexEip55;
     return _address!;
   }
