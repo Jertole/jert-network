@@ -1,13 +1,9 @@
+
 {
-  "network": "jert-local",
-  "chainId": 7777,
-
-  "JERTToken": "0x0000000000000000000000000000000000000000",
-  "TreasuryMultisig": "0x0000000000000000000000000000000000000000",
-  "KYCRegistry": "0x0000000000000000000000000000000000000000",
-  "ComplianceGateway": "0x0000000000000000000000000000000000000000",
-  "LeaseContract": "0x0000000000000000000000000000000000000000",
-
-  "updatedAt": "2025-01-01T00:00:00Z"
+  "sepolia": {
+    "chainId": 11155111,
+    "jertToken": "0xВАШ_АДРЕС_КОНТРАКТА",
+    "treasury": "0xВАШ_TREASURY",
+    "deployer": "0xВАШ_DEPLOYER"
+  }
 }
-
