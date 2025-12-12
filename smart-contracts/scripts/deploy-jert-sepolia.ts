@@ -1,20 +1,24 @@
---import { ethers } from "hardhat";
+import { ethers } from "hardhat";
+import "dotenv/config";
 
 async function main() {
-  const treasury = "0x0617f015f91fb711b64deede795c2179ab8488a3"; // твой MetaMask JERT Treasury
+  const treasury = process.env.TREASURY_ADDRESS;
+  if (!treasury) throw new Error("Missing TREASURY_ADDRESS in .env");
 
-  console.log("Deploying JERTToken to Sepolia...");
-  console.log("Treasury address:", treasury);
+  const [deployer] = await ethers.getSigners();
+  console.log("Deployer:", deployer.address);
+  console.log("Treasury:", treasury);
 
   const JERT = await ethers.getContractFactory("JERTToken");
   const jert = await JERT.deploy(treasury);
 
-  await jert.deployed();
+  await jert.waitForDeployment();
+  const addr = await jert.getAddress();
 
-  console.log("JERTToken deployed at:", jert.address);
+  console.log("JERTToken deployed to:", addr);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
 });
