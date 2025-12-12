@@ -1,1 +1,36 @@
+name: Linux Bash Sanity Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  bash-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show system info
+        run: |
+          uname -a
+          whoami
+          pwd
+          ls -la
+
+      - name: Check bash
+        run: |
+          bash --version
+          which bash
+
+      - name: Check node & npm
+        run: |
+          node --version
+          npm --version
+
+      - name: Bash strict mode test
+        run: |
+          set -euo pipefail
+          echo "Bash strict mode OK"
 
