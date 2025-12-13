@@ -1,6 +1,4 @@
 
-name: Jert Network CI
-
 on:
   push:
     paths:
@@ -25,12 +23,11 @@ jobs:
         working-directory: smart-contracts
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install deps
+      - name: Install deps (ci if lock exists)
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
@@ -39,22 +36,33 @@ jobs:
 
   evm-chain:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: evm-chain
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect evm-chain package.json
+        id: evmchain
+        run: |
+          if [ -f evm-chain/package.json ]; then echo "HAS_NODE=true" >> $GITHUB_OUTPUT; else echo "HAS_NODE=false" >> $GITHUB_OUTPUT; fi
+
       - uses: actions/setup-node@v4
+        if: steps.evmchain.outputs.HAS_NODE == 'true'
         with:
           node-version: 20
 
       - name: Install deps
+        if: steps.evmchain.outputs.HAS_NODE == 'true'
+        working-directory: evm-chain
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
       - name: Build (if defined)
+        if: steps.evmchain.outputs.HAS_NODE == 'true'
+        working-directory: evm-chain
         run: npm run build || echo "no build"
+
+      - name: Skip (not a Node project)
+        if: steps.evmchain.outputs.HAS_NODE != 'true'
+        run: echo "evm-chain has no package.json — skipped"
 
   api-gateway:
     runs-on: ubuntu-latest
@@ -63,10 +71,12 @@ jobs:
         working-directory: api-gateway
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Validate package.json
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json OK')"
 
       - name: Install deps
         run: |
@@ -83,10 +93,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - name: Setup Flutter (pinned)
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: stable
+          flutter-version: "3.22.3"
+          channel: "stable"
+          cache: true
 
+      - run: flutter --version
       - run: flutter pub get
       - run: flutter analyze || true
       - run: flutter test || true
