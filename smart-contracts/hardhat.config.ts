@@ -27,8 +27,4 @@ const config: HardhatUserConfig = {
   networks,
 };
 
-export default
-{
-  // ...
-  networks,
-};
+export default config;
