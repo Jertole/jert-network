@@ -23,10 +23,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: smart-contracts/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+      - name: Complite smart contracts
+      run: npm run complite
 
       - name: Compile smart contracts
         run: npx hardhat compile
