@@ -29,7 +29,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies (ci if lock exists)
-        run: if [ -f package-lock.json ]; then  npm ci else npm install fi
+        run: if [ -f package-lock.json ]; then  npm; ci else; npm install; fi
       - name: Compile smart contracts
         run: npx hardhat compile
 
