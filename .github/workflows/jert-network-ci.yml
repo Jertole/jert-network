@@ -18,16 +18,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20.x
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x     # Удалили cache: npm ← ЭТО ВАЖНО
-
+          node-version: 20
+          cach: npm
+      - run: npm run complite
       - name: Install dependencies
-        run: npm install         # меняем на npm install чтобы не использовать lockfile
-
-      - name: Compile contracts
+        run: npm ci
+      - name: Compile jert-network ci
         run: npm run compile
 
       - name: Run tests
         run: npm test
+      - name: Type check
+        run: npm run type- check -- if present
