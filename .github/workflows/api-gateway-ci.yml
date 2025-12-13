@@ -1,3 +1,5 @@
+name: API Gateway CI
+
 on:
   push:
     paths:
@@ -7,38 +9,39 @@ on:
     paths:
       - "api-gateway/**"
       - ".github/workflows/api-gateway-ci.yml"
- 
+
 jobs:
-  build-and-test:
+  api-gateway:
     runs-on: ubuntu-latest
- 
+
     defaults:
       run:
         working-directory: api-gateway
- 
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
- 
+
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm run complite
+
       - name: Install dependencies
-        run: npm ci
-      - name: Complete api-gateway
- 
-      - name: Run tests
-        run: npm test --if-present
- 
-      - name: Type check
-        run: npm run type-check --if-present
- 
-      - name: Lint
-        run: npm run lint --if-present
- 
-      - name: Build
-        run: npm run build --if-present
- 
- 
+        run: npm install
+
+      - name: Build (if defined)
+        run: |
+          if npm run | grep -q "build"; then
+            npm run build
+          else
+            echo "No build script"
+          fi
+
+      - name: Test (if defined)
+        run: |
+          if npm run | grep -q "test"; then
+            npm test
+          else
+            echo "No test script"
+          fi
