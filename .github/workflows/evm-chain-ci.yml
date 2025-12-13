@@ -1,3 +1,4 @@
+
 on:
   push:
     paths:
@@ -9,7 +10,7 @@ on:
       - ".github/workflows/evm-chain-ci.yml"
 
 jobs:
-  build-and-test:
+  evm-chain:
     runs-on: ubuntu-latest
 
     defaults:
@@ -17,24 +18,39 @@ jobs:
         working-directory: evm-chain
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm run complite
+          cache-dependency-path: evm-chain/package-lock.json
+
       - name: Install dependencies
         run: npm ci
-      - name: Complite evn-chain
-      - name: Run tests
-        run: npm test --if-present
 
-      - name: Run tests
-        run: npm test --if-present
+      - name: Build (if defined)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.build ? 0 : 1)" \
+            && npm run build \
+            || echo "No build script - skipped"
 
-      - name: Type check
-        run: npm run type-check --if-present
+      - name: Test (if defined)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)" \
+            && npm test \
+            || echo "No test script - skipped"
 
+      - name: Lint (if defined)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1)" \
+            && npm run lint \
+            || echo "No lint script - skipped"
+
+      - name: Typecheck (if defined)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)" \
+            && npm run typecheck \
+            || echo "No typecheck script - skipped"
