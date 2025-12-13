@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Complite smart contracts
-      run: npm run complite
+        run: npm run complite
 
       - name: Compile smart contracts
         run: npx hardhat compile
