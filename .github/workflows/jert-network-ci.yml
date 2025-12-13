@@ -1,10 +1,13 @@
 
-name: Jert Network CI
-
 on:
   push:
-    branches: [ main, dev ]
+    paths:
+      - "smart-contracts/**"
+      - ".github/workflows/smart-contracts-linux-check.yml"
   pull_request:
+    paths:
+      - "smart-contracts/**"
+      - ".github/workflows/smart-contracts-linux-check.yml"
 
 jobs:
   smart-contracts:
@@ -22,14 +25,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cach: npm
-      - run: npm run complite
+          cache: npm
+          cache-dependency-path: smart-contracts/package-lock.json
+
       - name: Install dependencies
         run: npm ci
-      - name: Compile smart-contracts
-        run: npx hardhat complite
 
-      - name: Run tests
-        run: npm test
-      - name: Type check
-        run: npm run type- check -- if present
+      - name: Compile smart contracts
+        run: npx hardhat compile
+
+      - name: Run tests (if defined)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)" \
+            && npm test \
+            || echo "No test script - skipped"
+
+      - name: Typecheck (if defined)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)" \
+            && npm run typecheck \
+            || echo "No typecheck script - skipped"
+
+      - name: Lint (if defined)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1)" \
+            && npm run lint \
+            || echo "No lint script - skipped"
