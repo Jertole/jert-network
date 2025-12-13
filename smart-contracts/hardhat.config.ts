@@ -2,18 +2,18 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
 
-const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL;
-const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+const sepoliaUrl = process.env.SEPOLIA_RPC_URL || "";
+const pkRaw = (process.env.PRIVATE_KEY || "").replace(/^0x/, "");
+const hasValidPk = /^[0-9a-fA-F]{64}$/.test(pkRaw);
 
-const networks: HardhatUserConfig["networks"] = {
+const networks: any = {
   hardhat: {},
 };
 
-// ⬇️ добавляем sepolia ТОЛЬКО если есть ключ
-if (SEPOLIA_RPC_URL && DEPLOYER_PRIVATE_KEY) {
+if (sepoliaUrl && hasValidPk) {
   networks.sepolia = {
-    url: SEPOLIA_RPC_URL,
-    accounts: [DEPLOYER_PRIVATE_KEY],
+    url: sepoliaUrl,
+    accounts: [`0x${pkRaw}`],
   };
 }
 
@@ -27,4 +27,8 @@ const config: HardhatUserConfig = {
   networks,
 };
 
-export default config;
+export default
+{
+  // ...
+  networks,
+};
