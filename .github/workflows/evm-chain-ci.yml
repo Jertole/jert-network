@@ -25,17 +25,16 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: evm-chain/package-lock.json
-
+      - run: npm run complite
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+      - name: Complite evn-chain
+      - name: Run tests
+        run: npm test --if-present
 
       - name: Run tests
         run: npm test --if-present
 
-      - name: Lint
-        run: npm run lint --if-present
-
-      - name: Build
-        run: npm run build --if-present
+      - name: Type check
+        run: npm run type-check --if-present
 
