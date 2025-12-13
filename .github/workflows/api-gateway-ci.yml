@@ -26,11 +26,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npm test
-
+      - run: npm run complite
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+      - name: Complete api-gateway
 
       - name: Run tests
         run: npm test --if-present
