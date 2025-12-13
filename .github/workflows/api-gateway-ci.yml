@@ -25,13 +25,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Generate package-lock.json (if missing)
          run:|
            if [ ! -f package-lock.json ]; then
               npm install --package-lock-only
                fi
-    
       - name: Commit package-lock.json
            run:|
                if [ -f package-lock.json ]; then
