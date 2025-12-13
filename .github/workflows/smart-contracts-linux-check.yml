@@ -1,4 +1,3 @@
-
 name: Smart Contracts Linux Check
 
 on:
@@ -29,22 +28,36 @@ jobs:
           node-version: 20
 
       - name: Install dependencies (ci if lock exists)
-        run: if [-f package-lock.json]; then  npm ci; else npm install;  fi
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Compile smart contracts
+        run: npx hardhat compile
 
       - name: Run tests (if defined)
-         run:|
-          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.test ? 0 :1)"\
-            && npm test \
-            || echo "No test script - skipped"
+        run: |
+          if npm run | grep -q "test"; then
+            npm test
+          else
+            echo "No tests defined"
+          fi
 
       - name: Typecheck (if defined)
         run: |
-          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)" \
-            && npm run typecheck \
-            || echo "No typecheck script - skipped"
+          if npm run | grep -q "typecheck"; then
+            npm run typecheck
+          else
+            echo "No typecheck defined"
+          fi
 
       - name: Lint (if defined)
         run: |
-          node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1)" \
-            && npm run lint \
-            || echo "No lint script - skipped"
+          if npm run | grep -q "lint"; then
+            npm run lint
+          else
+            echo "No lint defined"
+          fi
