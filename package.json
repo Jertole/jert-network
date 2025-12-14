@@ -1,1 +1,18 @@
+{
+  "name": "jert-network",
+  "private": true,
+  "description": "JERT Network monorepo (stability-first canonical layout)",
+  "scripts": {
+    "test:smart-contracts": "npm --prefix smart-contracts test",
+    "build:smart-contracts": "npm --prefix smart-contracts run build",
+    "lint:smart-contracts": "npm --prefix smart-contracts run lint",
 
+    "test:api-gateway": "npm --prefix api-gateway test",
+    "build:api-gateway": "npm --prefix api-gateway run build",
+    "lint:api-gateway": "npm --prefix api-gateway run lint",
+
+    "test:corporate-wallet": "npm --prefix corporate-wallet test",
+    "build:corporate-wallet": "npm --prefix corporate-wallet run build",
+    "lint:corporate-wallet": "npm --prefix corporate-wallet run lint"
+  }
+}
