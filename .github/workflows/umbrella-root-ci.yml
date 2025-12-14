@@ -1,14 +1,16 @@
+
 name: Umbrella Root CI
 
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
 
 jobs:
   root-proxy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,46 +20,16 @@ jobs:
         with:
           node-version: "20"
 
-      - name: smart-contracts:install deps
+      - name: Install root deps (turbo only)
         run: |
-          cd smart-contracts
           if [ -f package-lock.json ]; then
             npm ci
           else
             npm install --no-audit --no-fund
           fi
 
-      - name: smart-contracts:test
-        run: npm --prefix smart-contracts test
+      - name: Turbo test (smart-contracts)
+        run: npx turbo run test --filter=smart-contracts
 
-      - name: api-gateway:install deps
-        run: |
-          cd api-gateway
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install --no-audit --no-fund
-          fi
-
-      - name: api-gateway:test (if defined)
-        run: |
-          node -e "const p=require('./api-gateway/package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)" \
-          && npm --prefix api-gateway test \
-            || echo "No api-gateway test script – skipped"
-
-      - name: corporate-wallet:install deps
-        run: |
-          cd corporate-wallet
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install --no-audit --no-fund
-          fi
-
-      - name: corporate-wallet:test (if defined)
-        run: |
-          node -e "const p=require('./corporate-wallet/package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)" \
-          && npm --prefix corporate-wallet test \
-          || echo "No corporate-wallet test script – skipped"
-
-      
+      - name: Turbo test (corporate-wallet)
+        run: npx turbo run test --filter=corporate-wallet
