@@ -154,10 +154,51 @@ const explorerBase =
               {contractsInfo.chainId ? `(chainId ${contractsInfo.chainId})` : ""}
             </div>
 
-            <div>
-              <b>Treasury:</b>{" "}
-              <code>{contractsInfo.contracts?.TreasuryMultisig?.address || "n/a"}</code>
-            </div>
+            
+
+--<div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+  <b>Treasury:</b>
+  <code>{contractsInfo.contracts?.TreasuryMultisig?.address || "n/a"}</code>
+
+  {contractsInfo.contracts?.TreasuryMultisig?.address ? (
+    <>
+      <button
+        type="button"
+        onClick={() => copyToClipboard(contractsInfo.contracts!.TreasuryMultisig!.address!)}
+        style={{
+          padding: "4px 8px",
+          borderRadius: 8,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.04)",
+          color: "#f5f5f5",
+          fontSize: 12,
+          cursor: "pointer",
+        }}
+        title="Copy address"
+      >
+        Copy
+      </button>
+
+      <a
+        href={`${explorerBase}${contractsInfo.contracts!.TreasuryMultisig!.address!}`}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          padding: "4px 8px",
+          borderRadius: 8,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.04)",
+          color: "#f5f5f5",
+          fontSize: 12,
+          textDecoration: "none",
+        }}
+        title="Open in explorer"
+      >
+        Explorer
+      </a>
+    </>
+  ) : null}
+</div>
 
             <div>
               <b>Threshold:</b>{" "}
