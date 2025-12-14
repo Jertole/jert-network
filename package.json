@@ -2,6 +2,9 @@
   "name": "jert-network",
   "private": true,
   "description": "JERT Network monorepo (stability-first canonical layout)",
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
   "scripts": {
     "test:smart-contracts": "npm --prefix smart-contracts test",
     "build:smart-contracts": "npm --prefix smart-contracts run build",
