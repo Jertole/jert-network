@@ -39,25 +39,45 @@ export const Dashboard: React.FC = () => {
       }
     })();
   }, []);
-  
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // fallback for older browsers
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-  }
-};
 
-const explorerBase =
-  contractsInfo?.chainId === 11155111
-    ? "https://sepolia.etherscan.io/address/"
-    : "https://etherscan.io/address/";
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // fallback for older browsers
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  };
+
+  const explorerBase =
+    contractsInfo?.chainId === 11155111
+      ? "https://sepolia.etherscan.io/address/"
+      : "https://etherscan.io/address/";
+
+  const btnStyle: React.CSSProperties = {
+    padding: "4px 8px",
+    borderRadius: 8,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.04)",
+    color: "#f5f5f5",
+    fontSize: 12,
+    cursor: "pointer",
+  };
+
+  const linkStyle: React.CSSProperties = {
+    padding: "4px 8px",
+    borderRadius: 8,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.04)",
+    color: "#f5f5f5",
+    fontSize: 12,
+    textDecoration: "none",
+  };
 
   return (
     <div
@@ -131,7 +151,7 @@ const explorerBase =
         </div>
       </header>
 
-      {/* TREASURY MULTISIG (A9) */}
+      {/* TREASURY MULTISIG (A9/A10) */}
       <div
         style={{
           padding: 16,
@@ -154,55 +174,68 @@ const explorerBase =
               {contractsInfo.chainId ? `(chainId ${contractsInfo.chainId})` : ""}
             </div>
 
-            
+            {/* Treasury address + buttons */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <b>Treasury:</b>
+              <code>{contractsInfo.contracts?.TreasuryMultisig?.address || "n/a"}</code>
 
---<div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-  <b>Treasury:</b>
-  <code>{contractsInfo.contracts?.TreasuryMultisig?.address || "n/a"}</code>
+              {contractsInfo.contracts?.TreasuryMultisig?.address ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyToClipboard(contractsInfo.contracts!.TreasuryMultisig!.address!)
+                    }
+                    style={btnStyle}
+                    title="Copy treasury address"
+                  >
+                    Copy
+                  </button>
 
-  {contractsInfo.contracts?.TreasuryMultisig?.address ? (
-    <>
-      <button
-        type="button"
-        onClick={() => copyToClipboard(contractsInfo.contracts!.TreasuryMultisig!.address!)}
-        style={{
-          padding: "4px 8px",
-          borderRadius: 8,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.04)",
-          color: "#f5f5f5",
-          fontSize: 12,
-          cursor: "pointer",
-        }}
-        title="Copy address"
-      >
-        Copy
-      </button>
+                  <a
+                    href={`${explorerBase}${contractsInfo.contracts!.TreasuryMultisig!.address!}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={linkStyle}
+                    title="Open treasury in explorer"
+                  >
+                    Explorer
+                  </a>
+                </>
+              ) : null}
+            </div>
 
-      <a
-        href={`${explorerBase}${contractsInfo.contracts!.TreasuryMultisig!.address!}`}
-        target="_blank"
-        rel="noreferrer"
-        style={{
-          padding: "4px 8px",
-          borderRadius: 8,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.04)",
-          color: "#f5f5f5",
-          fontSize: 12,
-          textDecoration: "none",
-        }}
-        title="Open in explorer"
-      >
-        Explorer
-      </a>
-    </>
-  ) : null}
-</div>
+            {/* JERTToken address + buttons */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <b>JERTToken:</b>
+              <code>{contractsInfo.contracts?.JERTToken?.address || "n/a"}</code>
+
+              {contractsInfo.contracts?.JERTToken?.address ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(contractsInfo.contracts!.JERTToken!.address!)}
+                    style={btnStyle}
+                    title="Copy token address"
+                  >
+                    Copy
+                  </button>
+
+                  <a
+                    href={`${explorerBase}${contractsInfo.contracts!.JERTToken!.address!}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={linkStyle}
+                    title="Open token in explorer"
+                  >
+                    Explorer
+                  </a>
+                </>
+              ) : null}
+            </div>
 
             <div>
-              <b>Threshold:</b>{" "}
-              {contractsInfo.multisig?.threshold ?? "n/a"} / 3
+              <b>Threshold:</b> {contractsInfo.multisig?.threshold ?? "n/a"} / 3
             </div>
 
             {contractsInfo.multisig?.owners?.map((a, i) => (
@@ -286,4 +319,3 @@ const explorerBase =
 };
 
 export default Dashboard;
-
