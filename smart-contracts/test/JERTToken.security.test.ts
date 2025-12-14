@@ -1,15 +1,8 @@
-
 import { ethers } from "hardhat";
 import { expect } from "chai";
 
-function hasFn(contract: any, signatures: string[]) {
-  for (const sig of signatures) {
-    try {
-      contract.interface.getFunction(sig);
-      return sig;
-    } catch {}
-  }
-  return null;
+function hasMethod(contract: any, name: string): boolean {
+  return typeof contract?.[name] === "function";
 }
 
 describe("JERTToken – security baseline", function () {
@@ -27,17 +20,15 @@ describe("JERTToken – security baseline", function () {
     expect(totalSupply).to.equal(maxSupply);
     expect(treasuryBal).to.equal(maxSupply);
 
-    // If contract exposes owner(), ensure treasury owns it
-    const ownerFn = hasFn(jert, ["owner()"]);
-    if (ownerFn) {
-      const owner = await jert.owner();
+    // If owner() exists, ensure treasury owns it
+    if (hasMethod(jert, "owner")) {
+      const owner = await (jert as any).owner();
       expect(owner).to.equal(treasury.address);
     }
 
-    // If mint exists, it must be locked or restricted (should revert for non-treasury)
-    const mintFn = hasFn(jert, ["mint(address,uint256)"]);
-    if (mintFn) {
-      await expect(jert.connect(user).mint(user.address, 1n)).to.be.reverted;
+    // If mint exists, it must be restricted (should revert for non-treasury)
+    if (hasMethod(jert, "mint")) {
+      await expect((jert.connect(user) as any).mint(user.address, 1n)).to.be.reverted;
     }
   });
 
@@ -48,22 +39,20 @@ describe("JERTToken – security baseline", function () {
     const jert = await JERT.deploy(treasury.address);
     await jert.waitForDeployment();
 
-    const pauseFn = hasFn(jert, ["pause()"]);
-    const unpauseFn = hasFn(jert, ["unpause()"]);
-    if (!pauseFn || !unpauseFn) {
-      // Pausable not present -> do not fail the suite
+    // If pausable not present -> skip safely
+    if (!hasMethod(jert, "pause") || !hasMethod(jert, "unpause")) {
       return;
     }
 
     // non-owner must fail
-    await expect(jert.connect(user).pause()).to.be.reverted;
+    await expect((jert.connect(user) as any).pause()).to.be.reverted;
 
-    await jert.connect(treasury).pause();
+    await (jert.connect(treasury) as any).pause();
 
-    // transfer while paused should revert (reason/custom error may differ)
+    // transfer while paused should revert
     await expect(jert.connect(treasury).transfer(user.address, 1n)).to.be.reverted;
 
-    await jert.connect(treasury).unpause();
+    await (jert.connect(treasury) as any).unpause();
 
     // after unpause transfer should succeed
     await expect(jert.connect(treasury).transfer(user.address, 1n)).to.not.be.reverted;
@@ -76,30 +65,29 @@ describe("JERTToken – security baseline", function () {
     const jert = await JERT.deploy(treasury.address);
     await jert.waitForDeployment();
 
-    // Try common blocklist function signatures (choose the first that exists)
-    const setFlagFn = hasFn(jert, [
-      "setBlocked(address,bool)",
-      "setBlocklisted(address,bool)",
-      "setBlacklisted(address,bool)",
-      "setDenylisted(address,bool)",
-      "setDenied(address,bool)"
-    ]);
+    // Try common function names (no signatures), pick the first реально существующую
+    const candidates = [
+      "setBlocked",
+      "setBlocklisted",
+      "setBlacklisted",
+      "setDenylisted",
+      "setDenied"
+    ];
 
-    if (!setFlagFn) {
-      // Compliance exists but function name differs -> don’t fail green, just skip
+    const methodName = candidates.find((n) => hasMethod(jert, n));
+    if (!methodName) {
+      // function name differs or compliance is wired differently -> skip safely
       return;
     }
 
-    // Block user (must be callable by treasury/owner; if not, it should revert and test would fail)
-    // @ts-ignore
-    await expect((jert.connect(treasury) as any)[setFlagFn.split("(")[0]](user.address, true)).to.not.be.reverted;
+    // Block user
+    await expect((jert.connect(treasury) as any)[methodName](user.address, true)).to.not.be.reverted;
 
-    // Any transfer to blocked user should revert
+    // Transfer to blocked user should revert
     await expect(jert.connect(treasury).transfer(user.address, 1n)).to.be.reverted;
 
     // Unblock and transfer should succeed
-    // @ts-ignore
-    await expect((jert.connect(treasury) as any)[setFlagFn.split("(")[0]](user.address, false)).to.not.be.reverted;
+    await expect((jert.connect(treasury) as any)[methodName](user.address, false)).to.not.be.reverted;
     await expect(jert.connect(treasury).transfer(user.address, 1n)).to.not.be.reverted;
   });
 });
