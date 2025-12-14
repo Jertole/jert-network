@@ -6,11 +6,15 @@ Non-custodial, permissioned EVM infrastructure for the **JERT token** and the
 
 This repository contains:
 
-- `smart-contracts/` – Solidity contracts (JERT token, KYC/AML, Multisig treasury, Lease contracts) + Hardhat tests.
-- `corporate-wallet/` – React-based **JERT Treasury / Multisig dashboard**.
-- `api-gateway/` – Node.js (TypeScript) API gateway (compliance, energy oracle, wallet balance, tx stubs).
-- `flutter-wallet/` – Android/iOS **JERT Wallet** (non-custodial, PIN-protected, 2FA for sends).
-- 
+- smart-contracts/ — Solidity contracts (Hardhat)
+- corporate-wallet/ — React-based corporate wallet (Treasury UI)
+  PIN-protected with optional second-factor (2FA) security model
+- api-gateway/ — Node.js / TypeScript API gateway
+- mobile-wallet/ — Flutter Android/iOS wallet
+  PIN-protected with optional second-factor (2FA) security model
+- evm-chain/ — EVM chain / node configuration & tooling
+- docs/ — Documentation (incl. contract-addresses.json, specs, roadmap)
+  
 ## 1. Repository structure
 
 jert-network/
