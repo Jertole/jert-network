@@ -1,11 +1,9 @@
-
 import React from "react";
+import { useEffect, useState } from "react";
 import { JertBalance } from "../components/JertBalance";
 import { SendJert } from "../components/SendJert";
 import { MultisigOverview } from "../components/MultisigOverview";
-import { useEffect, useState } from "react";
 
-export const Dashboard: React.FC = () => {
 type ContractsJson = {
   network?: string;
   chainId?: number;
@@ -23,54 +21,26 @@ type ContractsJson = {
   };
 };
 
-const [contractsInfo, setContractsInfo] = useState<ContractsJson | null>(null);
-const [contractsError, setContractsError] = useState<string | null>(null);
+export const Dashboard: React.FC = () => {
+  const [contractsInfo, setContractsInfo] = useState<ContractsJson | null>(null);
+  const [contractsError, setContractsError] = useState<string | null>(null);
 
-useEffect(() => {
-  (async () => {
-    try {
-      const res = await fetch("/contract-addresses.json", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as ContractsJson;
-      setContractsInfo(json);
-      setContractsError(null);
-    } catch (e: any) {
-      setContractsError(e?.message ?? "Failed to load contract-addresses.json");
-      setContractsInfo(null);
-    }
-  })();
-}, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/contract-addresses.json", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = (await res.json()) as ContractsJson;
+        setContractsInfo(json);
+        setContractsError(null);
+      } catch (e: any) {
+        setContractsError(e?.message ?? "Failed to load contract-addresses.json");
+        setContractsInfo(null);
+      }
+    })();
+  }, []);
+
   return (
-    <div style={{ marginTop: 16, padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)" }}>
-  <div style={{ fontWeight: 700, marginBottom: 8 }}>Treasury Multisig</div>
-
-  {contractsError && <div>Error: {contractsError}</div>}
-  {!contractsError && !contractsInfo && <div>Loading…</div>}
-
-  {contractsInfo && (
-    <div style={{ display: "grid", gap: 8 }}>
-      <div>
-        <b>Network:</b> {contractsInfo.network ?? "n/a"}{" "}
-        {contractsInfo.chainId ? `(chainId ${contractsInfo.chainId})` : ""}
-      </div>
-
-      <div>
-        <b>Treasury:</b>{" "}
-        <code>{contractsInfo.contracts?.TreasuryMultisig?.address || "n/a"}</code>
-      </div>
-
-      <div>
-        <b>Threshold:</b> {contractsInfo.multisig?.threshold ?? "n/a"} / 3
-      </div>
-
-      {contractsInfo.multisig?.owners?.map((a, i) => (
-        <div key={i}>
-          <b>Owner {i + 1}:</b> <code>{a || "(empty)"}</code>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
     <div
       id="dashboard-root"
       style={{
@@ -141,6 +111,48 @@ useEffect(() => {
           </div>
         </div>
       </header>
+
+      {/* TREASURY MULTISIG (A9) */}
+      <div
+        style={{
+          padding: 16,
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.02)",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>
+          Treasury Multisig (2-of-3)
+        </div>
+
+        {contractsError && <div>Error: {contractsError}</div>}
+        {!contractsError && !contractsInfo && <div>Loading…</div>}
+
+        {contractsInfo && (
+          <div style={{ display: "grid", gap: 8 }}>
+            <div>
+              <b>Network:</b> {contractsInfo.network ?? "n/a"}{" "}
+              {contractsInfo.chainId ? `(chainId ${contractsInfo.chainId})` : ""}
+            </div>
+
+            <div>
+              <b>Treasury:</b>{" "}
+              <code>{contractsInfo.contracts?.TreasuryMultisig?.address || "n/a"}</code>
+            </div>
+
+            <div>
+              <b>Threshold:</b>{" "}
+              {contractsInfo.multisig?.threshold ?? "n/a"} / 3
+            </div>
+
+            {contractsInfo.multisig?.owners?.map((a, i) => (
+              <div key={i}>
+                <b>Owner {i + 1}:</b> <code>{a || "(empty)"}</code>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* MAIN GRID */}
       <main
@@ -214,3 +226,4 @@ useEffect(() => {
 };
 
 export default Dashboard;
+
