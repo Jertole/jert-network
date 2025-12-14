@@ -21,3 +21,12 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# npm cache
+.npm/
