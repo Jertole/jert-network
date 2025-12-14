@@ -18,11 +18,41 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run root proxy tests (smart-contracts)
-        run: npm run test:smart-contracts
+      
+- name: smart-contracts: install deps
+        run: |
+          cd smart-contracts
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
 
-      - name: Run root proxy tests (api-gateway)
-        run: npm run test:api-gateway
+      - name: smart-contracts: test
+        run: npm --prefix smart-contracts test
 
-      - name: Run root proxy tests (corporate-wallet)
-        run: npm run test:corporate-wallet
+      - name: api-gateway: install deps
+        run: |
+          cd api-gateway
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: api-gateway: test
+        run: npm --prefix api-gateway test
+
+      - name: corporate-wallet: install deps
+        run: |
+          cd corporate-wallet
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: corporate-wallet: test
+        run: npm --prefix corporate-wallet test
+
+      
