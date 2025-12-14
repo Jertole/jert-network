@@ -18,8 +18,7 @@ jobs:
         with:
           node-version: "20"
 
-      
-- name: smart-contracts: install deps
+      - name: smart-contracts:install deps
         run: |
           cd smart-contracts
           if [ -f package-lock.json ]; then
@@ -28,10 +27,10 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: smart-contracts: test
+      - name: smart-contracts:test
         run: npm --prefix smart-contracts test
 
-      - name: api-gateway: install deps
+      - name: api-gateway:install deps
         run: |
           cd api-gateway
           if [ -f package-lock.json ]; then
@@ -40,10 +39,10 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: api-gateway: test
+      - name: api-gateway:test
         run: npm --prefix api-gateway test
 
-      - name: corporate-wallet: install deps
+      - name: corporate-wallet:install deps
         run: |
           cd corporate-wallet
           if [ -f package-lock.json ]; then
@@ -52,7 +51,7 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: corporate-wallet: test
+      - name: corporate-wallet:test
         run: npm --prefix corporate-wallet test
 
       
