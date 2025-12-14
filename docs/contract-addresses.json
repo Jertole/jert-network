@@ -24,6 +24,17 @@
       "registryExpected": "KYCRegistry"
     }
   },
+  "multisig": {
+  "type": "TreasuryMultisig",
+  "owners": [
+    "",
+    "",
+    ""
+  ],
+  "threshold": 2,
+  "notes": "Canonical governance: 2-of-3 confirmations required"
+},
+  
   "opsChecklist": [
     "Deploy TreasuryMultisig (3 owners, confirmations=2)",
     "Deploy KYCRegistry (then transferOwnership to TreasuryMultisig)",
