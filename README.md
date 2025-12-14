@@ -25,6 +25,17 @@ jert-network/
   docs/
     PROJECT_ROADMAP.md   # High-level roadmap & status
 
+## Root-level commands
+
+For convenience, common tasks can be executed from the repository root.
+These commands proxy to the corresponding package directories without changing
+their internal tooling.
+
+Examples:
+- npm run test:smart-contracts
+- npm run build:api-gateway
+- npm run test:corporate-wallet
+
 ## USD & Energy-Denominated Utility
 
 JERT — это **USD-номинированный утилити-токен**, связанный с реальными
