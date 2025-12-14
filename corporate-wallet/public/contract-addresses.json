@@ -1,1 +1,46 @@
 
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "updated": "2025-12-14",
+  "contracts": {
+    "TreasuryMultisig": {
+      "address": "",
+      "notes": "2-of-3 owners"
+    },
+    "JERTToken": {
+      "address": "",
+      "symbol": "JERT",
+      "decimals": 18,
+      "ownerExpected": "TreasuryMultisig"
+    },
+    "KYCRegistry": {
+      "address": "",
+      "ownerExpected": "TreasuryMultisig"
+    },
+    "ComplianceGateway": {
+      "address": "",
+      "ownerExpected": "TreasuryMultisig",
+      "registryExpected": "KYCRegistry"
+    }
+  },
+  "multisig": {
+  "type": "TreasuryMultisig",
+  "owners": [
+    "",
+    "",
+    ""
+  ],
+  "threshold": 2,
+  "notes": "Canonical governance: 2-of-3 confirmations required"
+},
+  
+  "opsChecklist": [
+    "Deploy TreasuryMultisig (3 owners, confirmations=2)",
+    "Deploy KYCRegistry (then transferOwnership to TreasuryMultisig)",
+    "Deploy ComplianceGateway(registry) (then transferOwnership to TreasuryMultisig)",
+    "Deploy JERTToken(treasury=TreasuryMultisig)",
+    "Verify owners: token/registry/gateway owner == TreasuryMultisig",
+    "Verify supply: totalSupply == MAX_SUPPLY and balanceOf(TreasuryMultisig) == MAX_SUPPLY"
+  ]
+}
