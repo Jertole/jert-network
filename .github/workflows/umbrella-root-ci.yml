@@ -1,1 +1,28 @@
+name: Umbrella Root CI
 
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  root-proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run root proxy tests (smart-contracts)
+        run: npm run test:smart-contracts
+
+      - name: Run root proxy tests (api-gateway)
+        run: npm run test:api-gateway
+
+      - name: Run root proxy tests (corporate-wallet)
+        run: npm run test:corporate-wallet
