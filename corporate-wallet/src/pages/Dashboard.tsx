@@ -24,6 +24,7 @@ type ContractsJson = {
 export const Dashboard: React.FC = () => {
   const [contractsInfo, setContractsInfo] = useState<ContractsJson | null>(null);
   const [contractsError, setContractsError] = useState<string | null>(null);
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -40,7 +41,7 @@ export const Dashboard: React.FC = () => {
     })();
   }, []);
 
-  const copyToClipboard = async (text: string) => {
+  const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -51,6 +52,9 @@ export const Dashboard: React.FC = () => {
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
+    } finally {
+      setCopiedLabel(label);
+      window.setTimeout(() => setCopiedLabel(null), 2000);
     }
   };
 
@@ -151,7 +155,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* TREASURY MULTISIG (A9/A10) */}
+      {/* TREASURY MULTISIG (A9/A10 + Copied feedback) */}
       <div
         style={{
           padding: 16,
@@ -160,8 +164,13 @@ export const Dashboard: React.FC = () => {
           background: "rgba(255,255,255,0.02)",
         }}
       >
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>
-          Treasury Multisig (2-of-3)
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <div style={{ fontWeight: 700 }}>Treasury Multisig (2-of-3)</div>
+          {copiedLabel && (
+            <div style={{ fontSize: 12, opacity: 0.75 }}>
+              Copied: <b>{copiedLabel}</b>
+            </div>
+          )}
         </div>
 
         {contractsError && <div>Error: {contractsError}</div>}
@@ -184,7 +193,10 @@ export const Dashboard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() =>
-                      copyToClipboard(contractsInfo.contracts!.TreasuryMultisig!.address!)
+                      copyToClipboard(
+                        contractsInfo.contracts!.TreasuryMultisig!.address!,
+                        "Treasury"
+                      )
                     }
                     style={btnStyle}
                     title="Copy treasury address"
@@ -214,7 +226,9 @@ export const Dashboard: React.FC = () => {
                 <>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(contractsInfo.contracts!.JERTToken!.address!)}
+                    onClick={() =>
+                      copyToClipboard(contractsInfo.contracts!.JERTToken!.address!, "JERTToken")
+                    }
                     style={btnStyle}
                     title="Copy token address"
                   >
