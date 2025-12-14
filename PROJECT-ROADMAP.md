@@ -18,6 +18,20 @@ Rules going forward:
 - Do not break existing green CI checks
 - Prefer incremental changes; avoid large refactors
 - Turborepo will be introduced only after stable canonical baseline (prepared via turbo.json, not yet enabled)
+  ## CI & Turborepo Status (Fixed ✅)
+
+- Umbrella Root CI enabled as the primary orchestration layer
+- Turborepo v2 integrated for umbrella only (no workspaces, stability-first)
+- Turbo tasks defined via turbo.json (v2 schema)
+- Package filtering performed by path (./smart-contracts, ./corporate-wallet)
+- Turbo cache enabled (.turbo), npm root cache intentionally disabled
+- No root lockfile by design (per-package dependency management preserved)
+
+Result:
+- All CI workflows green
+- Deterministic, reproducible checks
+- Fast re-runs via Turbo cache
+- Infrastructure layer considered **stable and closed**
 
 # 📌 Overview
 
