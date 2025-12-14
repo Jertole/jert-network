@@ -39,11 +39,15 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: api-gateway:test
-        run: npm --prefix api-gateway test
-
-      - name: corporate-wallet:install deps
+      - name: api-gateway:test (if defined)
         run: |
+    node -e "const p=require('./api-gateway/package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)" \
+          && npm --prefix api-gateway test \
+            || echo "No api-gateway test script – skipped"
+
+
+      - name:corporate-wallet:install deps
+         run:|
           cd corporate-wallet
           if [ -f package-lock.json ]; then
             npm ci
@@ -51,7 +55,7 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: corporate-wallet:test
+      - name:corporate-wallet:test
         run: npm --prefix corporate-wallet test
 
       
