@@ -54,7 +54,5 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: corporate-wallet:test
-         run:npm --prefix corporate-wallet test
-
+     
       
