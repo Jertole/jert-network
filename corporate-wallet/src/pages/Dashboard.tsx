@@ -3,6 +3,7 @@ import React from "react";
 import { JertBalance } from "../components/JertBalance";
 import { SendJert } from "../components/SendJert";
 import { MultisigOverview } from "../components/MultisigOverview";
+import { useEffect, useState } from "react";
 
 export const Dashboard: React.FC = () => {
   return (
