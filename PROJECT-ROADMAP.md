@@ -1,6 +1,7 @@
 # JERT Network – Full Project Roadmap  
 ### USD-Denominated, Energy-Referenced Utility Token Infrastructure  
 ### Status: Active | Version: 1.0 | Updated: 2025-12-06
+Green-baseline -2025-12-14
 
 ---
 
