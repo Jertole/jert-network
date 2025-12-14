@@ -3,7 +3,21 @@
 ### Status: Active | Version: 1.0 | Updated: 2025-12-06
 Green-baseline -2025-12-14
 
----
+
+## Canonical Baseline (Status: DONE ✅)
+
+The repository is stabilized under a conservative, stability-first canonical layout.
+
+Completed:
+- Root hygiene: README aligned with real folder structure; CONTRIBUTING filled; .editorconfig added; .gitignore hardened
+- Root proxy scripts: root package.json added (no workspaces, no Turborepo enabled)
+- CI stability: per-package workflows remain green
+- Umbrella CI: root umbrella workflow added and validated (installs deps per package; skips missing scripts safely)
+
+Rules going forward:
+- Do not break existing green CI checks
+- Prefer incremental changes; avoid large refactors
+- Turborepo will be introduced only after stable canonical baseline (prepared via turbo.json, not yet enabled)
 
 # 📌 Overview
 
