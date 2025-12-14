@@ -6,6 +6,7 @@
   "scripts": {
     "compile": "hardhat compile && ts-node scripts/export-abi.ts",
     "test": "hardhat test",
+    "postcheck": "hardhat run scripts/postDeployCheck.ts --network sepolia"
     "deploy": "hardhat run scripts/deploy-all.ts --network jert"
   },
   "devDependencies": {
