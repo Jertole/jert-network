@@ -42,7 +42,11 @@ jobs:
       - name: Detect evm-chain package.json
         id: evmchain
         run: |
-          if [ -f evm-chain/package.json ]; then echo "HAS_NODE=true" >> $GITHUB_OUTPUT; else echo "HAS_NODE=false" >> $GITHUB_OUTPUT; fi
+         if [ -f evm-chain/package.json ]; then
+          echo "HAS_NODE=true" >> $GITHUB_OUTPUT
+          else
+          echo "HAS_NODE=false" >> $GITHUB_OUTPUT
+         fi
 
       - uses: actions/setup-node@v4
         if: steps.evmchain.outputs.HAS_NODE == 'true'
