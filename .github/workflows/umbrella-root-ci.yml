@@ -29,7 +29,7 @@ jobs:
           fi
 
       - name: Turbo test (smart-contracts)
-        run: npx turbo run test --filter=smart-contracts
+        run: npx turbo run test --filter=jert-smart-contracts
 
       - name: Turbo test (corporate-wallet)
-        run: npx turbo run test --filter=corporate-wallet
+        run: npx turbo run test --filter=jert-corporate-wallet
