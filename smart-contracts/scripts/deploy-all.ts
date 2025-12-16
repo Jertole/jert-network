@@ -1,4 +1,4 @@
-
+import "dotenv/config";
 import { ethers } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
@@ -28,8 +28,13 @@ async function main() {
   console.log("ComplianceGateway deployed at:", gatewayAddress);
 
   // --- 3. Deploy TreasuryMultisig ---
-  const owners = [ownerA.address, ownerB.address, ownerC.address];
-  const requiredConfirmations = 3;
+  const owners = [process.env.MULTISIG_OWNER_1 ||
+  ownerA.address,
+                  process.env.MULTISIG_OWNER_2 ||
+  ownerB.address,
+                  process.env.MULTISIG_OWNER_3 || 
+  ownerC.address];
+  const requiredConfirmations = 2;//canonical 2-of-3
   const TreasuryMultisig = await ethers.getContractFactory("TreasuryMultisig");
   const treasury = await TreasuryMultisig.deploy(owners, requiredConfirmations);
   await treasury.waitForDeployment();
