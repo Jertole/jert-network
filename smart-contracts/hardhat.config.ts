@@ -27,7 +27,14 @@ const config: HardhatUserConfig = {
       optimizer: { enabled: true, runs: 200 },
     },
   },
-  networks,
+  
+networks: {
+  hardhat: {},
+  sepolia: {
+    url: process.env.INFURA_SEPOLIA_RPC!,
+    accounts: [process.env.DEPLOYER_PRIVATE_KEY!],
+  },
+},
 };
 
 export default config;
