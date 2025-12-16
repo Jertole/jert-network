@@ -2,14 +2,14 @@
 {
   "network": "sepolia",
   "chainId": 11155111,
-  "updated": "2025-12-15",
+  "updated": "2025-12-16",
   "contracts": {
     "TreasuryMultisig": {
       "address": "",
       "notes": "2-of-3 owners"
     },
     "JERTToken": {
-      "address": "",
+      "address": "0x36AFc44a2F06D0b58e82966048Aed669f5C9B560",
       "symbol": "JERT",
       "decimals": 18,
       "ownerExpected": "TreasuryMultisig"
