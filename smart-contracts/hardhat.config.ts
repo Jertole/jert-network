@@ -2,6 +2,8 @@ import { AddressRegistry } from "../config/address-registry";
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
+import * as dotenv from "dotenv";
+dotenv.config();
 
 const sepoliaUrl = process.env.SEPOLIA_RPC_URL || "";
 const pkRaw = (process.env.PRIVATE_KEY || "").replace(/^0x/, "");
