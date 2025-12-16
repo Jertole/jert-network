@@ -9,7 +9,7 @@
       "notes": "2-of-3 owners"
     },
     "JERTToken": {
-      "address": "0x36AFc44a2F06D0b58e82966048Aed669f5C9B560",
+      "address": "0xFB5A58c1b4B55F624d1D8FF30174a471e609E6CE",
       "symbol": "JERT",
       "decimals": 18,
       "ownerExpected": "TreasuryMultisig"
