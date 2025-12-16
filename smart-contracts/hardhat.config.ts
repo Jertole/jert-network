@@ -27,6 +27,11 @@ const config: HardhatUserConfig = {
       optimizer: { enabled: true, runs: 200 },
     },
   },
+etherscan: {
+  apiKey: {
+    sepolia: process.env.ETHERSCAN_API_KEY || "",
+  },
+},
   
 networks: {
   hardhat: {},
