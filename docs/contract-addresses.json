@@ -2,7 +2,7 @@
 {
   "network": "sepolia",
   "chainId": 11155111,
-  "updated": "2025-12-14",
+  "updated": "2025-12-15",
   "contracts": {
     "TreasuryMultisig": {
       "address": "",
