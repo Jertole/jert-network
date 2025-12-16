@@ -1,3 +1,4 @@
+import { AddressRegistry } from "../config/address-registry";
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
