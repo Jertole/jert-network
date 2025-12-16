@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { AddressRegistry } from "../../config/address-registry";
+import { AddressRegistry } from "../config/address-registry";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
