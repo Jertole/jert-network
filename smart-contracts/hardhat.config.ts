@@ -30,10 +30,14 @@ const config: HardhatUserConfig = {
   
 networks: {
   hardhat: {},
-  sepolia: {
-    url: process.env.INFURA_SEPOLIA_RPC!,
-    accounts: [process.env.DEPLOYER_PRIVATE_KEY!],
-  },
+  ...(process.env.INFURA_SEPOLIA_RPC && process.env.DEPLOYER_PRIVATE_KEY
+    ? {
+        sepolia: {
+          url: process.env.INFURA_SEPOLIA_RPC,
+          accounts: [process.env.DEPLOYER_PRIVATE_KEY],
+        },
+      }
+    : {}),
 },
 };
 
