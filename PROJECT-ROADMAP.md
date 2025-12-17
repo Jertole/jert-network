@@ -1,10 +1,11 @@
 # JERT Network – Full Project Roadmap  
 ### USD-Denominated, Energy-Referenced Utility Token Infrastructure  
 ### Status: Active | Updated: 2025-12-14
-Green-baseline -2025-12-14
+Green-baseline -2025-12-17
 
 
 ## Canonical Baseline (Status: DONE ✅)
+ ✅ Sepolia deployment check: `npx hardhat run scripts/check-deployed-contracts.ts --network sepolia` → `ALL GOOD ✓`
 
 The repository is stabilized under a conservative, stability-first canonical layout.
 
