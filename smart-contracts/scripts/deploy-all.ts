@@ -1,17 +1,28 @@
 import "dotenv/config";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
+
+function ensureDir(dirPath: string) {
+  if (fs.existsSync(dirPath)) {
+    const stat = fs.statSync(dirPath);
+    if (!stat.isDirectory()) {
+      throw new Error(`Path exists but is not a directory: ${dirPath}`);
+    }
+    return;
+  }
+  fs.mkdirSync(dirPath, { recursive: true });
+}
 
 async function main() {
   console.log("🚀 Deploying JERT core contracts...");
 
-  const [deployer, ownerA, ownerB, ownerC] = await ethers.getSigners();
+  const [deployer, owner1, owner2, owner3] = await ethers.getSigners();
 
   console.log("Deployer:", deployer.address);
-  console.log("Owner A:", ownerA.address);
-  console.log("Owner B:", ownerB.address);
-  console.log("Owner C:", ownerC.address);
+  console.log("Owner 1:", owner1.address);
+  console.log("Owner 2:", owner2.address);
+  console.log("Owner 3:", owner3.address);
 
   // --- 1. Deploy KYCRegistry ---
   const KYCRegistry = await ethers.getContractFactory("KYCRegistry");
@@ -27,15 +38,14 @@ async function main() {
   const gatewayAddress = await gateway.getAddress();
   console.log("ComplianceGateway deployed at:", gatewayAddress);
 
-  // --- 3. Deploy TreasuryMultisig ---
+  // --- 3. Deploy TreasuryMultisig (canonical 2-of-3) ---
   const owners = [
-    (process.env.MULTISIG_OWNER_1 ??
-  ownerA.address),
-    (process.env.MULTISIG_OWNER_2 ??
-  ownerB.address),
-    (process.env.MULTISIG_OWNER_3 ??
-  ownerC.address)];
-  const requiredConfirmations = 2;//canonical 2-of-3
+    process.env.MULTISIG_OWNER_1 ?? owner1.address,
+    process.env.MULTISIG_OWNER_2 ?? owner2.address,
+    process.env.MULTISIG_OWNER_3 ?? owner3.address,
+  ];
+  const requiredConfirmations = 2; // canonical 2-of-3
+
   const TreasuryMultisig = await ethers.getContractFactory("TreasuryMultisig");
   const treasury = await TreasuryMultisig.deploy(owners, requiredConfirmations);
   await treasury.waitForDeployment();
@@ -56,25 +66,35 @@ async function main() {
   const leaseAddress = await lease.getAddress();
   console.log("LeaseContract deployed at:", leaseAddress);
 
-  // --- 6. Save addresses to deployments/addresses.json ---
+  // --- 6. Save addresses (CI-safe) to deployments/addresses/<network>.json ---
   const rootDir = path.join(__dirname, "..");
   const deploymentsDir = path.join(rootDir, "deployments");
-  if (!fs.existsSync(deploymentsDir)) {
-    fs.mkdirSync(deploymentsDir, { recursive: true });
-  }
+  const addressesDir = path.join(deploymentsDir, "addresses");
 
-  const outPath = path.join(deploymentsDir, "addresses.json");
+  // Ensure directories exist (and are directories, not files)
+  ensureDir(deploymentsDir);
+  ensureDir(addressesDir);
+
+  const net = await ethers.provider.getNetwork();
+  const networkName = network.name || `chain-${net.chainId.toString()}`;
+
+  const outPath = path.join(addressesDir, `${networkName}.json`);
+
   const addresses = {
-    network: (await ethers.provider.getNetwork()).chainId.toString(),
+    network: {
+      name: networkName,
+      chainId: net.chainId.toString(),
+    },
     deployer: deployer.address,
     owners,
+    requiredConfirmations,
     contracts: {
       JERTToken: jertAddress,
       TreasuryMultisig: treasuryAddress,
       KYCRegistry: kycAddress,
       ComplianceGateway: gatewayAddress,
-      LeaseContract: leaseAddress
-    }
+      LeaseContract: leaseAddress,
+    },
   };
 
   fs.writeFileSync(outPath, JSON.stringify(addresses, null, 2), "utf-8");
@@ -92,3 +112,4 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
