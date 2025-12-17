@@ -38,8 +38,8 @@ For security, resilience, and jurisdictional risk mitigation, individual signers
 
 The three signers represent independent control domains:
 
-Signer A – represents a registered local infrastructure & operations control adn
-operational execution, energy, logistics, and physical infrastructure deployment (CRYOGAS LLC,Kazahstan).
+Signer A – represents a registered local infrastructure operator - CRYOGAS LLC (Kazakhstan), BIN 230140010661.The entity is a party to an investment agreement 
+with the Government of the Republic of Kazakhstan and is responsible for physical execution and capital deployment for the first terminal i Actobe.
 
 Signer B – Engenering & technology / Holding Control
 Represents strategic and commercial interests of the group, including brand, IP, and long-term value alignment.
