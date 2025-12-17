@@ -3,13 +3,12 @@ import fs from "fs";
 import path from "path";
 
 /**
- * Finds docs/contract-addresses.json by walking up from current working dir.
- * This avoids brittle relative paths and keeps CI untouched.
+ * Find docs/contract-addresses.json by walking up from CWD
  */
 function findContractAddressesJson(): string {
   const target = path.join("docs", "contract-addresses.json");
-
   let dir = process.cwd();
+
   for (let i = 0; i < 8; i++) {
     const candidate = path.join(dir, target);
     if (fs.existsSync(candidate)) return candidate;
@@ -18,19 +17,26 @@ function findContractAddressesJson(): string {
     dir = parent;
   }
 
-  throw new Error(
-    `Cannot find ${target}. Run from repo root or from smart-contract/, with docs/contract-addresses.json present.`
-  );
+  throw new Error(`Cannot find ${target}. Run from repo root or smart-contracts/.`);
 }
 
 function isAddressLike(v: unknown): v is string {
   return typeof v === "string" && /^0x[a-fA-F0-9]{40}$/.test(v);
 }
 
+/**
+ * Pick address from:
+ *  - string: "0x..."
+ *  - object: { address: "0x..." }
+ *  - nested aliases
+ */
 function pickAddress(obj: any, keys: string[]): string | undefined {
+  if (!obj || typeof obj !== "object") return undefined;
+
   for (const k of keys) {
-    const v = obj?.[k];
+    const v = obj[k];
     if (isAddressLike(v)) return v;
+    if (v && typeof v === "object" && isAddressLike(v.address)) return v.address;
   }
   return undefined;
 }
@@ -41,28 +47,41 @@ async function main() {
   const addresses = JSON.parse(raw);
 
   const net = network.name; // e.g. "sepolia"
+
+  /**
+   * Supported JSON shapes:
+   *  A) { "sepolia": {...} }
+   *  B) { "networks": { "sepolia": {...} } }
+   *  C) { "network": "sepolia", "contracts": {...} }   <-- your canonical format
+   */
   const netBlock =
     addresses?.[net] ??
     addresses?.networks?.[net] ??
     addresses?.[net.toLowerCase()] ??
+    (addresses?.contracts ? addresses : undefined) ??
     addresses;
 
   if (!netBlock) {
-    throw new Error(
-      `No network block found for "${net}" inside ${jsonPath}.`
-    );
+    throw new Error(`No network block found for "${net}" inside ${jsonPath}.`);
   }
 
+  // If canonical format → work inside .contracts
+  const scope = (netBlock as any).contracts ?? netBlock;
+
   const jertToken =
-    pickAddress(netBlock, ["JERTToken", "JertToken", "jertToken", "token", "JERT_TOKEN"]) ??
-    pickAddress(addresses, ["JERTToken", "JertToken", "jertToken", "token", "JERT_TOKEN"]);
+    pickAddress(scope, ["JERTToken", "JertToken", "jertToken", "token", "JERT_TOKEN"]) ??
+    pickAddress(addresses?.contracts ?? addresses, ["JERTToken", "JertToken", "jertToken", "token", "JERT_TOKEN"]);
 
   const treasuryMultisig =
-    pickAddress(netBlock, ["TreasuryMultisig", "treasuryMultisig", "multisig", "TREASURY_MULTISIG"]) ??
-    pickAddress(addresses, ["TreasuryMultisig", "treasuryMultisig", "multisig", "TREASURY_MULTISIG"]);
+    pickAddress(scope, ["TreasuryMultisig", "treasuryMultisig", "multisig", "TREASURY_MULTISIG"]) ??
+    pickAddress(addresses?.contracts ?? addresses, ["TreasuryMultisig", "treasuryMultisig", "multisig", "TREASURY_MULTISIG"]);
 
-  if (!jertToken) throw new Error(`JERTToken address not found in ${jsonPath} for network "${net}".`);
-  if (!treasuryMultisig) throw new Error(`TreasuryMultisig address not found in ${jsonPath} for network "${net}".`);
+  if (!jertToken) {
+    throw new Error(`JERTToken address not found in ${jsonPath} for network "${net}".`);
+  }
+  if (!treasuryMultisig) {
+    throw new Error(`TreasuryMultisig address not found in ${jsonPath} for network "${net}".`);
+  }
 
   console.log(`Network: ${net}`);
   console.log(`Using addresses from: ${jsonPath}`);
@@ -70,7 +89,7 @@ async function main() {
   console.log(`TreasuryMultisig: ${treasuryMultisig}`);
   console.log("—");
 
-  // Token checks
+  // ===== Token checks =====
   const token = await ethers.getContractAt("JERTToken", jertToken);
   const [name, symbol, decimals, totalSupply] = await Promise.all([
     token.name(),
@@ -79,21 +98,21 @@ async function main() {
     token.totalSupply(),
   ]);
 
-  console.log("✅ JERTToken OK");
+  console.log("✓ JERTToken OK");
   console.log(`  name: ${name}`);
   console.log(`  symbol: ${symbol}`);
   console.log(`  decimals: ${decimals}`);
   console.log(`  totalSupply: ${totalSupply.toString()}`);
   console.log("—");
 
-  // Multisig checks (try common method names to avoid brittle coupling)
+  // ===== Multisig checks =====
   const ms = await ethers.getContractAt("TreasuryMultisig", treasuryMultisig);
 
   let owners: string[] = [];
   try {
     owners = await (ms as any).getOwners();
   } catch {
-    // fallback: try owners(i) for i=0..9
+    // fallback: owners(i)
     for (let i = 0; i < 10; i++) {
       try {
         const o = await (ms as any).owners(i);
@@ -113,16 +132,16 @@ async function main() {
     } catch {}
   }
 
-  console.log("✅ TreasuryMultisig OK");
+  console.log("✓ TreasuryMultisig OK");
   if (owners.length) console.log(`  owners: ${owners.join(", ")}`);
   if (threshold !== undefined) console.log(`  threshold: ${threshold.toString?.() ?? String(threshold)}`);
-
   console.log("—");
-  console.log("ALL GOOD ✅");
+
+  console.log("ALL GOOD ✓");
 }
 
 main().catch((e) => {
-  console.error("FAILED ❌");
+  console.error("FAILED ✗");
   console.error(e?.message ?? e);
   process.exitCode = 1;
 });
