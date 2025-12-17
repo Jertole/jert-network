@@ -32,16 +32,14 @@ On-chain enforcement, not policy-based trust
 This structure ensures that material decisions require consensus across independent control domains.
 
 
-3. Signer Roles (Abstracted)
+3. Signer Roles (
 
 For security, resilience, and jurisdictional risk mitigation, individual signers are represented by role, not by name or legal entity, in public documentation.
 
 The three signers represent independent control domains:
 
-Signer A – Infrastructure & Operations Control
-Represents operational execution, energy, logistics, and physical infrastructure deployment.
-Commercial / Holding Control
-Represents strategic and commercial interests of the group, including brand, IP, and long-term value alignment.
+Signer A – represents a registered local infrastructure & operations control adn
+operational execution, energy, logistics, and physical infrastructure deployment (CRYOGAS LLC,Kazahstan).
 
 Signer B – Engenering & technology / Holding Control
 Represents strategic and commercial interests of the group, including brand, IP, and long-term value alignment.
