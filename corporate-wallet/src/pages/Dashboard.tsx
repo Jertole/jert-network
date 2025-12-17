@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { JertBalance } from "../components/JertBalance";
 import { SendJert } from "../components/SendJert";
 import { MultisigOverview } from "../components/MultisigOverview";
+import { GovernancePanel } from "../components/GovernancePanel";
 
 type ContractsJson = {
   network?: string;
@@ -326,6 +327,7 @@ export const Dashboard: React.FC = () => {
             Treasury Multisig Status
           </h2>
           <MultisigOverview />
+          <GovernancePanel />
         </section>
       </main>
     </div>
