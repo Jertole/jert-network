@@ -34,3 +34,10 @@ coverage/
 # Secrets
 .env
 **/.env
+
+# Hardhat
+smart-contracts/artifacts/
+smart-contracts/cache/
+smart-contracts/typechain-types/
+
+
