@@ -4,6 +4,7 @@ import { JertBalance } from "../components/JertBalance";
 import { SendJert } from "../components/SendJert";
 import { MultisigOverview } from "../components/MultisigOverview";
 import { GovernancePanel } from "../components/GovernancePanel";
+import { loadContractsConfig } from "../config/contractsConfig";
 
 type ContractsJson = {
   network?: string;
@@ -30,14 +31,10 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/contract-addresses.json", { cache: "no-store" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as ContractsJson;
-        setContractsInfo(json);
-        setContractsError(null);
-      } catch (e: any) {
-        setContractsError(e?.message ?? "Failed to load contract-addresses.json");
-        setContractsInfo(null);
+const json = (await loadContractsConfig()) as ContractsJson;
+setContractsInfo(json);
+setContractsError(null);
+
       }
     })();
   }, []);
@@ -335,3 +332,4 @@ export const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

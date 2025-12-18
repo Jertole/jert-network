@@ -1,7 +1,6 @@
 
 export const TREASURY_MULTISIG_ADDRESS =
-  "0xYourTreasuryMultisigAddressHere"; // сюда потом вставим реальный адрес
-
+"0x0617f015f91fb711b64deede795c2179ab8488a3";
 export const TREASURY_MULTISIG_ABI = [
   {
     inputs: [],
@@ -63,3 +62,4 @@ export const TREASURY_MULTISIG_ABI = [
     type: "function",
   },
 ];
+

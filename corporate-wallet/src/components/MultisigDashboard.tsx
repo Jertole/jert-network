@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from "react";
 import { BrowserProvider, Contract, formatEther, parseEther } from "ethers";
 import {
   TREASURY_MULTISIG_ABI,
   TREASURY_MULTISIG_ADDRESS,
 } from "../config/treasuryMultisig";
+import { STRINGS } from "../i18n/en";
 
 declare global {
   interface Window {
@@ -43,7 +45,7 @@ const MultisigDashboard: React.FC = () => {
   const connectWallet = async () => {
     try {
       if (!window.ethereum) {
-        setError("MetaMask не найден. Установи расширение браузера.");
+        setError(STRINGS.errors.metamaskNotFound);
         return;
       }
 
@@ -64,7 +66,7 @@ const MultisigDashboard: React.FC = () => {
       setError(null);
     } catch (e: any) {
       console.error(e);
-      setError(e.message ?? "Ошибка подключения к кошельку");
+      setError(e?.message ?? STRINGS.errors.walletConnectionError);
     }
   };
 
@@ -81,9 +83,9 @@ const MultisigDashboard: React.FC = () => {
 
       if (signerAddress) {
         setIsOwner(
-          onChainOwners.map((o) => o.toLowerCase()).includes(
-            signerAddress.toLowerCase()
-          )
+          onChainOwners
+            .map((o) => o.toLowerCase())
+            .includes(signerAddress.toLowerCase())
         );
       }
 
@@ -107,7 +109,7 @@ const MultisigDashboard: React.FC = () => {
       setTransactions(txs);
     } catch (e: any) {
       console.error(e);
-      setError(e.message ?? "Ошибка загрузки данных мультисиг кошелька");
+      setError(e?.message ?? STRINGS.errors.failedToLoadMultisig);
     } finally {
       setLoadingTxs(false);
     }
@@ -115,7 +117,7 @@ const MultisigDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!window.ethereum) {
-      setError("MetaMask не найден. Установи расширение браузера.");
+      setError(STRINGS.errors.metamaskNotFound);
     }
   }, []);
 
@@ -131,12 +133,12 @@ const MultisigDashboard: React.FC = () => {
     setError(null);
 
     if (!contract || !signerAddress) {
-      setError("Сначала подключи кошелёк");
+      setError(STRINGS.errors.connectWalletFirst);
       return;
     }
 
     if (!isOwner) {
-      setError("Только владелец multisig может создавать транзакции");
+      setError(STRINGS.errors.onlyOwnerCanCreateTx);
       return;
     }
 
@@ -147,10 +149,7 @@ const MultisigDashboard: React.FC = () => {
           ? parseEther(newTxValue)
           : parseEther("0");
 
-      const dataBytes =
-        newTxData && newTxData !== ""
-          ? newTxData
-          : "0x";
+      const dataBytes = newTxData && newTxData !== "" ? newTxData : "0x";
 
       const tx = await contract.submitTransaction(newTxTo, valueWei, dataBytes);
       await tx.wait();
@@ -162,7 +161,7 @@ const MultisigDashboard: React.FC = () => {
       await loadMultisigState();
     } catch (e: any) {
       console.error(e);
-      setError(e.message ?? "Ошибка при создании транзакции");
+      setError(e?.message ?? STRINGS.errors.createTxFailed);
     } finally {
       setTxSubmitting(false);
     }
@@ -170,7 +169,7 @@ const MultisigDashboard: React.FC = () => {
 
   const handleConfirmTransaction = async (txId: number) => {
     if (!contract || !signerAddress) {
-      setError("Сначала подключи кошелёк");
+      setError(STRINGS.errors.connectWalletFirst);
       return;
     }
     try {
@@ -180,13 +179,13 @@ const MultisigDashboard: React.FC = () => {
       await loadMultisigState();
     } catch (e: any) {
       console.error(e);
-      setError(e.message ?? "Ошибка при подтверждении транзакции");
+      setError(e?.message ?? STRINGS.errors.confirmTxFailed);
     }
   };
 
   const handleExecuteTransaction = async (txId: number) => {
     if (!contract || !signerAddress) {
-      setError("Сначала подключи кошелёк");
+      setError(STRINGS.errors.connectWalletFirst);
       return;
     }
     try {
@@ -196,7 +195,7 @@ const MultisigDashboard: React.FC = () => {
       await loadMultisigState();
     } catch (e: any) {
       console.error(e);
-      setError(e.message ?? "Ошибка при исполнении транзакции");
+      setError(e?.message ?? STRINGS.errors.executeTxFailed);
     }
   };
 
@@ -206,27 +205,24 @@ const MultisigDashboard: React.FC = () => {
         <header className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              JERT Treasury Multisig
+              {STRINGS.multisig.title}
             </h1>
-            <p className="text-sm text-slate-400">
-              Корпоративный мультисиг-кошелёк Cryogas / JERT Network
-            </p>
+            <p className="text-sm text-slate-400">{STRINGS.multisig.subtitle}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             {signerAddress ? (
               <>
                 <span className="text-xs text-slate-400">
-                  Подключен:{" "}
+                  {STRINGS.multisig.connected}:{" "}
                   <span className="font-mono">
-                    {signerAddress.slice(0, 6)}...
-                    {signerAddress.slice(-4)}
+                    {signerAddress.slice(0, 6)}...{signerAddress.slice(-4)}
                   </span>
                 </span>
                 <button
                   className="px-3 py-1 text-xs rounded-full border border-emerald-500/60 text-emerald-300"
                   onClick={() => loadMultisigState()}
                 >
-                  Обновить состояние
+                  {STRINGS.multisig.refreshState}
                 </button>
               </>
             ) : (
@@ -234,7 +230,7 @@ const MultisigDashboard: React.FC = () => {
                 onClick={connectWallet}
                 className="px-4 py-2 rounded-xl bg-emerald-500/90 hover:bg-emerald-400 text-slate-900 text-sm font-semibold shadow-lg shadow-emerald-500/30"
               >
-                Подключить MetaMask
+                {STRINGS.multisig.connectMetaMask}
               </button>
             )}
           </div>
@@ -249,18 +245,19 @@ const MultisigDashboard: React.FC = () => {
         <section className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
             <h2 className="text-sm font-semibold text-slate-300 mb-2">
-              Owners
+              {STRINGS.multisig.owners}
             </h2>
             <div className="space-y-1">
               {owners.length === 0 && (
-                <p className="text-xs text-slate-500">Пока не загружено.</p>
+                <p className="text-xs text-slate-500">
+                  {STRINGS.multisig.notLoadedYet}
+                </p>
               )}
               {owners.map((o) => (
                 <div
                   key={o}
                   className={`flex items-center justify-between text-xs rounded-lg px-2 py-1 ${
-                    signerAddress &&
-                    o.toLowerCase() === signerAddress.toLowerCase()
+                    signerAddress && o.toLowerCase() === signerAddress.toLowerCase()
                       ? "bg-emerald-500/15 text-emerald-200"
                       : "bg-slate-800/60 text-slate-200"
                   }`}
@@ -271,7 +268,7 @@ const MultisigDashboard: React.FC = () => {
                   {signerAddress &&
                     o.toLowerCase() === signerAddress.toLowerCase() && (
                       <span className="text-[10px] uppercase tracking-wide">
-                        You
+                        {STRINGS.multisig.you}
                       </span>
                     )}
                 </div>
@@ -281,7 +278,7 @@ const MultisigDashboard: React.FC = () => {
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
             <h2 className="text-sm font-semibold text-slate-300 mb-2">
-              Confirmation Policy
+              {STRINGS.multisig.confirmationPolicy}
             </h2>
             <p className="text-4xl font-bold">
               {numConfirmationsRequired || "-"}
@@ -290,29 +287,29 @@ const MultisigDashboard: React.FC = () => {
               </span>
             </p>
             <p className="mt-2 text-xs text-slate-400">
-              Требуемое число подтверждений для выполнения транзакции.
+              {STRINGS.multisig.confirmationsNote}
             </p>
             <p className="mt-1 text-xs">
-              Ты:{" "}
+              {STRINGS.multisig.youLabel}:{" "}
               <span
                 className={
                   isOwner ? "text-emerald-400 font-semibold" : "text-slate-400"
                 }
               >
-                {isOwner ? "владелец multisig" : "не являешься владельцем"}
+                {isOwner ? STRINGS.multisig.youAreOwner : STRINGS.multisig.youAreNotOwner}
               </span>
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
             <h2 className="text-sm font-semibold text-slate-300 mb-2">
-              Contract
+              {STRINGS.multisig.contract}
             </h2>
             <p className="text-xs text-slate-400 break-all font-mono">
               {TREASURY_MULTISIG_ADDRESS}
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              Убедись, что этот адрес совпадает с деплоем в сети.
+              {STRINGS.multisig.contractAddressNote}
             </p>
           </div>
         </section>
@@ -320,7 +317,7 @@ const MultisigDashboard: React.FC = () => {
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-200">
-              Создать транзакцию
+              {STRINGS.multisig.createTransaction}
             </h2>
           </div>
 
@@ -330,7 +327,7 @@ const MultisigDashboard: React.FC = () => {
           >
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">
-                Адрес получателя (to)
+                {STRINGS.multisig.recipientAddress}
               </label>
               <input
                 type="text"
@@ -344,7 +341,7 @@ const MultisigDashboard: React.FC = () => {
 
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">
-                Сумма, ETH (value)
+                {STRINGS.multisig.amountEth}
               </label>
               <input
                 type="number"
@@ -358,7 +355,7 @@ const MultisigDashboard: React.FC = () => {
 
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">
-                Data (hex, optional)
+                {STRINGS.multisig.dataOptional}
               </label>
               <input
                 type="text"
@@ -374,7 +371,7 @@ const MultisigDashboard: React.FC = () => {
                 disabled={!isOwner || txSubmitting}
                 className="px-4 py-2 rounded-xl bg-emerald-500/90 hover:bg-emerald-400 text-slate-900 text-sm font-semibold shadow-lg shadow-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {txSubmitting ? "Создание..." : "Создать транзакцию"}
+                {txSubmitting ? STRINGS.multisig.creating : STRINGS.multisig.createTransactionButton}
               </button>
             </div>
           </form>
@@ -383,16 +380,16 @@ const MultisigDashboard: React.FC = () => {
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-200">
-              Транзакции
+              {STRINGS.multisig.transactions}
             </h2>
             {loadingTxs && (
-              <span className="text-xs text-slate-400">Загрузка...</span>
+              <span className="text-xs text-slate-400">{STRINGS.multisig.loading}</span>
             )}
           </div>
 
           {transactions.length === 0 ? (
             <p className="text-xs text-slate-500">
-              Транзакций пока нет. Создай первую.
+              {STRINGS.multisig.noTransactions}
             </p>
           ) : (
             <div className="space-y-2">
@@ -421,27 +418,22 @@ const MultisigDashboard: React.FC = () => {
                         }`}
                       >
                         {executed
-                          ? "Executed"
+                          ? STRINGS.multisig.statusExecuted
                           : canExecute
-                          ? "Ready to execute"
-                          : "Pending"}
+                          ? STRINGS.multisig.statusReady
+                          : STRINGS.multisig.statusPending}
                       </span>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-1">
                       <div>
                         <span className="text-slate-500">To: </span>
-                        <span className="font-mono break-all">
-                          {tx.to}
-                        </span>
+                        <span className="font-mono break-all">{tx.to}</span>
                       </div>
                       <div>
                         <span className="text-slate-500">Value: </span>
                         <span>
-                          {tx.value === 0n
-                            ? "0"
-                            : formatEther(tx.value)}{" "}
-                          ETH
+                          {tx.value === 0n ? "0" : formatEther(tx.value)} ETH
                         </span>
                       </div>
                       <div>
@@ -455,9 +447,7 @@ const MultisigDashboard: React.FC = () => {
                     {tx.data && tx.data !== "0x" && (
                       <div className="mt-1">
                         <span className="text-slate-500">Data: </span>
-                        <span className="font-mono break-all">
-                          {tx.data}
-                        </span>
+                        <span className="font-mono break-all">{tx.data}</span>
                       </div>
                     )}
 
@@ -489,3 +479,5 @@ const MultisigDashboard: React.FC = () => {
 };
 
 export default MultisigDashboard;
+
+
