@@ -3,7 +3,11 @@
 JERT Network Monorepo
 Non-custodial, permissioned EVM infrastructure for the **JERT token** and the
 **Green Cold Energy / Cryogas** ecosystem.
+**Public preview / reference implementation**
 
+This repository contains the reference implementation of the **JERT Network** components (smart contracts, wallet UIs, and API services).
+It does **not** provide any promise of redemption, pricing, or financial return.
+Production parameters (pricing, validator governance, compliance rules) are defined off-chain.
 This repository contains:
 
 - smart-contracts/ — Solidity contracts (Hardhat)
