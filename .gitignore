@@ -34,6 +34,7 @@ coverage/
 # Secrets
 .env
 **/.env
+env
 
 # Hardhat
 smart-contracts/artifacts/
