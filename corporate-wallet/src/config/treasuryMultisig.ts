@@ -2,6 +2,11 @@
 export const TREASURY_MULTISIG_ADDRESS =
 "0x0617f015f91fb711b64deede795c2179ab8488a3";
 export const TREASURY_MULTISIG_ABI = [
+  "function getOwners() view returns (address[])",
+  "function requiredConfirmations() view returns (uint256)",
+  "function getTransactionCount() view returns (uint256)",
+  "function transactions(uint256) view returns (address to, uint256 value, bytes data, bool executed, uint256 numConfirmations)"
+];
   {
     inputs: [],
     name: "getOwners",
