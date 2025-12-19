@@ -5,6 +5,7 @@ import { SendJert } from "../components/SendJert";
 import { MultisigOverview } from "../components/MultisigOverview";
 import { GovernancePanel } from "../components/GovernancePanel";
 import { loadContractsConfig } from "../config/contractsConfig";
+import { MultisigDashboard } from "../components/MultisigDashboard";
 
 type ContractsJson = {
   network?: string;
@@ -333,3 +334,4 @@ setContractsError(null);
 
 export default Dashboard;
 
+<MultisigDashboard />
