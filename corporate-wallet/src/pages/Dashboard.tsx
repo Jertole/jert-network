@@ -334,7 +334,7 @@ setContractsError(null);
             Treasury Multisig Status
           </h2>
           <MultisigOverview />
-          <GovernancePanel />
+          <GovernancePanel provider={provider} connectedAddress={address} chainId={chainId} />
         </section>
       </main>
     </div>
