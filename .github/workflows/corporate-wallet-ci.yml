@@ -1,4 +1,3 @@
-
 name: Corporate Wallet CI
 
 on:
@@ -20,11 +19,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Node.js 20 
+      # 2. Node.js 20 (with npm cache)
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
           cache-dependency-path: corporate-wallet/package-lock.json
 
       # 3. Устанавливаем зависимости для corporate-wallet
@@ -37,22 +37,34 @@ jobs:
             npm install
           fi
 
-      # 4. Тесты (если скрипт есть в package.json)
+      # 4. Prepare placeholder env (NO SECRETS) for CI build/test
+      #    This prevents Vite/React code from crashing due to missing import.meta.env.* variables.
+      - name: Prepare env for build (placeholders)
+        working-directory: ./corporate-wallet
+        run: |
+          cat > .env <<'EOF'
+          VITE_DEFAULT_NETWORK=sepolia
+          VITE_TREASURY_MULTISIG_ADDRESS=0x0000000000000000000000000000000000000000
+          VITE_JERT_TOKEN_ADDRESS=0x0000000000000000000000000000000000000000
+          VITE_EVM_RPC_URL=http://localhost
+          EOF
+
+      # 5. Тесты (если скрипт есть в package.json)
       - name: Run tests
         working-directory: ./corporate-wallet
         run: npm test --if-present
 
-      # 5. TypeScript typecheck (если есть)
+      # 6. TypeScript typecheck (если есть)
       - name: Type check
         working-directory: ./corporate-wallet
         run: npm run typecheck --if-present
 
-      # 6. ESLint (если есть)
+      # 7. ESLint (если есть)
       - name: Lint
         working-directory: ./corporate-wallet
         run: npm run lint --if-present
 
-      # 7. Сборка UI — ОБЯЗАТЕЛЬНО
+      # 8. Сборка UI — ОБЯЗАТЕЛЬНО
       - name: Build Corporate Wallet
         working-directory: ./corporate-wallet
         run: npm run build
