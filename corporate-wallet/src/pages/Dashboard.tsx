@@ -5,7 +5,6 @@ import { SendJert } from "../components/SendJert";
 import { MultisigOverview } from "../components/MultisigOverview";
 import { GovernancePanel } from "../components/GovernancePanel";
 import { loadContractsConfig } from "../config/contractsConfig";
-import { MultisigDashboard } from "../components/MultisigDashboard";
 import { ConnectWallet } from "../components/ConnectWallet";
 import { useWallet, SEPOLIA_CHAIN_ID } from "../hooks/useWallet";
 
