@@ -26,6 +26,7 @@ type ContractsJson = {
 };
 
 export const Dashboard: React.FC = () => {
+  const { provider, address, chainId, connect, disconnect, switchToSepolia } = useWallet();
   const [contractsInfo, setContractsInfo] = useState<ContractsJson | null>(null);
   const [contractsError, setContractsError] = useState<string | null>(null);
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
@@ -36,8 +37,6 @@ export const Dashboard: React.FC = () => {
 const json = (await loadContractsConfig()) as ContractsJson;
 setContractsInfo(json);
 setContractsError(null);
-const { provider, address, chainId, connect, disconnect, switchToSepolia } = useWallet();
-
       }
     })();
   }, []);
