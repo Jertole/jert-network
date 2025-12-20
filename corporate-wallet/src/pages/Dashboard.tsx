@@ -37,6 +37,7 @@ export const Dashboard: React.FC = () => {
 const json = (await loadContractsConfig()) as ContractsJson;
 setContractsInfo(json);
 setContractsError(null);
+const { provider, address, chainId, connect, disconnect, switchToSepolia } = useWallet();
 
       }
     })();
