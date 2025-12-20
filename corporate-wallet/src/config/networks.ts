@@ -1,49 +1,30 @@
 // src/config/networks.ts
-export type NetworkKey = "hardhat" | "sepolia";
+// Canonical network definitions for Corporate Wallet
 
-export interface NetworkConfig {
-  key: NetworkKey;
-  label: string;
-  chainId: number;
-  rpcUrl: string;
-  explorerUrl?: string;
-}
-
-export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
-  hardhat: {
-    key: "hardhat",
-    label: "Localhost (Hardhat)",
-    chainId: 31337,
-    rpcUrl: "http://127.0.0.1:8545",
-  },
+export const SUPPORTED_NETWORKS = {
   sepolia: {
     key: "sepolia",
-    label: "Sepolia (Alchemy/Infura)",
     chainId: 11155111,
-    // Вставишь свой URL от Alchemy/Infura в .env
-    rpcUrl: import.meta.env.VITE_SEPOLIA_RPC_URL || "",
-    explorerUrl: "https://sepolia.etherscan.io",
+    label: "Sepolia",
+    isTestnet: true,
   },
+  mainnet: {
+    key: "mainnet",
+    chainId: 1,
+    label: "Mainnet",
+    isTestnet: false,
+  },
+} as const;
+
+export type SupportedNetworkKey = keyof typeof SUPPORTED_NETWORKS;
+
+export type SupportedNetwork = {
+  key: SupportedNetworkKey;
+  chainId: number;
+  label: string;
+  isTestnet: boolean;
 };
 
-export const DEFAULT_NETWORK_KEY: NetworkKey = "sepolia";
+// Default network for UI / CI
+export const DEFAULT_NETWORK: SupportedNetworkKey = "sepolia";
 
-export function getDefaultNetwork(): NetworkConfig {
-  const envKey = (import.meta.env.VITE_DEFAULT_NETWORK || "hardhat") as NetworkKey;
-  return NETWORKS[envKey] ?? NETWORKS.hardhat;
-}
-const config: HardhatUserConfig = {
-  // ...остальной конфиг
-  networks: {
-    hardhat: {
-      chainId: 31337,
-    },
-    sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "",
-      accounts: process.env.SEPOLIA_TREASURY_PRIVATE_KEY
-        ? [process.env.SEPOLIA_TREASURY_PRIVATE_KEY]
-        : [],
-      chainId: 11155111,
-    },
-  },
-};
