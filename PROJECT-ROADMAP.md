@@ -1,7 +1,7 @@
 # JERT Network – Full Project Roadmap  
 ### USD-Denominated, Energy-Referenced Utility Token Infrastructure  
-### Status: Active | Updated: 2025-12-14
-Green-baseline -2025-12-20
+### Status: Active | Updated: 2025-12-20
+
 
 ## ✅ Milestone: Corporate Wallet (React) — Direct Send JERT on Sepolia
 
@@ -18,6 +18,7 @@ Green-baseline -2025-12-20
 
 **Verified:** Sepolia tx confirmed; UI displayed tx hash and “Transaction confirmed”.
 
+Green-baseline -2025-12-14
 ## Canonical Baseline (Status: DONE ✅)
  ✅ Sepolia deployment check: `npx hardhat run scripts/check-deployed-contracts.ts --network sepolia` → `ALL GOOD ✓`
 
