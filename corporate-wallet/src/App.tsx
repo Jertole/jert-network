@@ -1,9 +1,7 @@
-
-import React from "react";
-import MultisigDashboard from "./components/MultisigDashboard";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
-  return <MultisigDashboard />;
+  return <Dashboard />;
 }
 
 export default App;
