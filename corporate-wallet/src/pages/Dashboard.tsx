@@ -86,6 +86,14 @@ const { provider, address, chainId, connect, disconnect, switchToSepolia } = use
   };
 
   return (
+    <ConnectWallet
+  address={address}
+  chainId={chainId}
+  onConnect={connect}
+  onDisconnect={disconnect}
+  onSwitchToSepolia={switchToSepolia}
+  expectedChainId={SEPOLIA_CHAIN_ID}
+/>
     <div
       id="dashboard-root"
       style={{
