@@ -1,48 +1,56 @@
-mport React, { useState } from "react";
+import React, { useState } from "react";
 import { isPinSet, savePin, validatePin } from "../security/pinStorage";
 
 interface PinModalProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
 }
 
-export const PinModal: React.FC<PinModalProps> = ({
-  open,
-  onClose,
-  onSuccess,
-}) => {
-  const [mode, setMode] = useState<"enter" | "create">(
-    isPinSet() ? "enter" : "create"
-  );
+export const PinModal: React.FC<PinModalProps> = ({ open, onClose, onSuccess }) => {
+  const [mode, setMode] = useState<"enter" | "create">(isPinSet() ? "enter" : "create");
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   if (!open) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    const pinTrim = pin.trim();
+
     if (mode === "create") {
       try {
-        savePin(pin);
-        onSuccess();
+        setBusy(true);
+        savePin(pinTrim);
+        await onSuccess();
         onClose();
       } catch (e: any) {
         setError(e?.message ?? "Failed to save PIN");
+      } finally {
+        setBusy(false);
       }
       return;
     }
 
     // mode === "enter"
-    if (!validatePin(pin)) {
+    if (!validatePin(pinTrim)) {
       setError("Invalid PIN");
       return;
     }
 
-    onSuccess();
-    onClose();
+    try {
+      setBusy(true);
+      await onSuccess();
+      onClose();
+    } catch (e: any) {
+      // If onSuccess throws (e.g., send failed), keep modal open and show error
+      setError(e?.message ?? "Operation failed");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -81,6 +89,8 @@ export const PinModal: React.FC<PinModalProps> = ({
             onChange={(e) => setPin(e.target.value)}
             maxLength={8}
             inputMode="numeric"
+            autoFocus
+            disabled={busy}
             style={{
               width: "100%",
               padding: "8px 10px",
@@ -93,13 +103,16 @@ export const PinModal: React.FC<PinModalProps> = ({
               letterSpacing: 4,
               marginTop: 8,
               marginBottom: 10,
+              opacity: busy ? 0.7 : 1,
             }}
           />
+
           {error && (
             <p style={{ color: "#ff6b6b", fontSize: 12, marginTop: 0 }}>
               {error}
             </p>
           )}
+
           <div
             style={{
               display: "flex",
@@ -111,6 +124,7 @@ export const PinModal: React.FC<PinModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={busy}
               style={{
                 padding: "6px 10px",
                 borderRadius: 999,
@@ -118,24 +132,27 @@ export const PinModal: React.FC<PinModalProps> = ({
                 background: "transparent",
                 color: "#f5f5f5",
                 fontSize: 12,
+                opacity: busy ? 0.7 : 1,
               }}
             >
               Cancel
             </button>
+
             <button
               type="submit"
+              disabled={busy}
               style={{
                 padding: "6px 14px",
                 borderRadius: 999,
                 border: "none",
-                background:
-                  "linear-gradient(90deg,#00e5ff,#00ff9d,#b000ff)",
+                background: "linear-gradient(90deg,#00e5ff,#00ff9d,#b000ff)",
                 color: "#000",
                 fontSize: 12,
                 fontWeight: 600,
+                opacity: busy ? 0.7 : 1,
               }}
             >
-              {mode === "create" ? "Save PIN" : "Confirm"}
+              {busy ? "Working..." : mode === "create" ? "Save PIN" : "Confirm"}
             </button>
           </div>
         </form>
@@ -147,6 +164,7 @@ export const PinModal: React.FC<PinModalProps> = ({
               setPin("");
               setError(null);
             }}
+            disabled={busy}
             style={{
               marginTop: 8,
               background: "none",
@@ -154,7 +172,8 @@ export const PinModal: React.FC<PinModalProps> = ({
               color: "#888",
               fontSize: 11,
               textDecoration: "underline",
-              cursor: "pointer",
+              cursor: busy ? "default" : "pointer",
+              opacity: busy ? 0.7 : 1,
             }}
           >
             Reset PIN
@@ -164,3 +183,4 @@ export const PinModal: React.FC<PinModalProps> = ({
     </div>
   );
 };
+

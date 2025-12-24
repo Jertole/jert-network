@@ -1,4 +1,3 @@
-
 import { ethers } from "ethers";
 
 declare global {
@@ -7,14 +6,19 @@ declare global {
   }
 }
 
-export async function getBrowserSigner() {
-  if (typeof window === "undefined" || !window.ethereum) {
-    throw new Error("No injected Ethereum provider (MetaMask) found.");
+/**
+ * Returns an ethers v6 Signer from the injected wallet (MetaMask).
+ * Throws a readable error if MetaMask is not available.
+ */
+export async function getBrowserSigner(): Promise<ethers.Signer> {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not available. Please install or enable it.");
   }
 
+  // Request account access if needed
+  await window.ethereum.request?.({ method: "eth_requestAccounts" });
+
   const provider = new ethers.BrowserProvider(window.ethereum);
-  // Запросить доступ к аккаунту
-  await provider.send("eth_requestAccounts", []);
-  const signer = await provider.getSigner();
-  return signer;
+  return provider.getSigner();
 }
+

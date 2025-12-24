@@ -1,14 +1,11 @@
-import type { NetworkKey } from "./networks";
+// IMPORTANT: set your deployed JERT token contract address here
+export const JERT_TOKEN_ADDRESS = "0xFB5A58c1b4B55F624d1D8FF30174a471e609E6CE";
 
-export const JERT_TOKEN_ADDRESS: Record<NetworkKey, string> = {
-  hardhat: "0x0000000000000000000000000000000000000000",
-  sepolia: "АДРЕС_КОНТРАКТА_ИЗ_ДЕПЛОЯ", // ← вставь сюда
-};
-
-export function getJertTokenAddress(net: NetworkKey): string | null {
-  const addr = JERT_TOKEN_ADDRESS[net];
-  if (!addr || addr === "0x0000000000000000000000000000000000000000") {
-    return null;
-  }
-  return addr;
-}
+// Minimal ERC-20 ABI (enough for transfer + decimals + balanceOf)
+export const JERT_TOKEN_ABI = [
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function transfer(address to, uint256 amount) returns (bool)",
+] as const;
