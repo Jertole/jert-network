@@ -1,9 +1,24 @@
 # JERT Network – Full Project Roadmap  
 ### USD-Denominated, Energy-Referenced Utility Token Infrastructure  
-### Status: Active | Updated: 2025-12-14
-Green-baseline -2025-12-17
+### Status: Active | Updated: 2025-12-20
 
 
+## ✅ Milestone: Corporate Wallet (React) — Direct Send JERT on Sepolia
+
+**Result:** DONE ✅
+
+- PIN-gated transfer flow works end-to-end:
+  - Create/Enter PIN → onSuccess continues → MetaMask tx prompt → Confirm → on-chain confirmed
+- Environment config stabilized:
+  - `.env` contains `VITE_JERT_TOKEN_SEPOLIA` (kept backward-compatible `VITE_JERT_TOKEN_ADDRESS`)
+- Resilience improvement:
+  - `decimals()` call is not a hard blocker (fallback/try-catch; default 18)
+- MetaMask edge-case documented:
+  - “Review alert” / missing Confirm can happen with **0 Sepolia ETH** (no gas). Fix: fund wallet with Sepolia ETH.
+
+**Verified:** Sepolia tx confirmed; UI displayed tx hash and “Transaction confirmed”.
+
+Green-baseline -2025-12-14
 ## Canonical Baseline (Status: DONE ✅)
  ✅ Sepolia deployment check: `npx hardhat run scripts/check-deployed-contracts.ts --network sepolia` → `ALL GOOD ✓`
 
