@@ -40,5 +40,8 @@ env
 smart-contracts/artifacts/
 smart-contracts/cache/
 smart-contracts/typechain-types/
+# --- Mobile wallet (Flutter) ---
+mobile-wallet/
+**/mobile-wallet/
 
 
