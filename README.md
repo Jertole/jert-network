@@ -10,14 +10,14 @@ It does **not** provide any promise of redemption, pricing, or financial return.
 Production parameters (pricing, validator governance, compliance rules) are defined off-chain.
 This repository contains:
 
-- smart-contracts/ — Solidity contracts (Hardhat)
-- corporate-wallet/ — React-based corporate wallet (Treasury UI)
+- smart-contracts/ - Solidity contracts (Hardhat)
+- corporate-wallet/ - React-based corporate wallet (Treasury UI)
   PIN-protected with optional second-factor (2FA) security model
-- api-gateway/ — Node.js / TypeScript API gateway
-- mobile-wallet/ — Flutter Android/iOS wallet
+- api-gateway/ - Node.js / TypeScript API gateway
+- mobile-wallet/ - Flutter Android/iOS wallet
   PIN-protected with optional second-factor (2FA) security model
-- evm-chain/ — EVM chain / node configuration & tooling
-- docs/ — Documentation (incl. contract-addresses.json, specs, roadmap)
+- evm-chain/ - EVM chain / node configuration & tooling
+- docs/ - Documentation (incl. contract-addresses.json, specs, roadmap)
   
 ## 1. Repository structure
 
