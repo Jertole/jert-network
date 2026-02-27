@@ -1,9 +1,16 @@
-# Jert-network
+# JERT Network
 
-JERT Network Monorepo
-Non-custodial, permissioned EVM infrastructure for the **JERT token** and the
-**Green Cold Energy / Cryogas** ecosystem.
-**Public preview / reference implementation**
+JERT (Joule Energy Recovery Token) is an Ethereum-based ERC-20 infrastructure utility token linked to cold energy recovery during LNG regasification.
+
+Token Details:
+- Network: Ethereum
+- Standard: ERC-20
+- Total Supply: 1,000,000,000,000 JERT
+- Decimals: 18
+- Contract: 0xE4c6d5Aa39dEa7ba83B65d332D0613dF2fEA4368
+
+JERT represents infrastructure access to cold energy recovery systems and LNG-powered reserve data center nodes. The token does not represent equity or financial yield.
+
 
 This repository contains the reference implementation of the **JERT Network** components (smart contracts, wallet UIs, and API services).
 It does **not** provide any promise of redemption, pricing, or financial return.
