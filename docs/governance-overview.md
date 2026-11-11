@@ -32,20 +32,22 @@ On-chain enforcement, not policy-based trust
 This structure ensures that material decisions require consensus across independent control domains.
 
 
-3. Signer Roles (
+3. Signer Roles
 
-For security, resilience, and jurisdictional risk mitigation, individual signers are represented by role, not by name or legal entity, in public documentation.
+For security, resilience, and jurisdictional risk mitigation, public documentation identifies signers by role. Section 6 governs disclosure of signer identities and associated legal entities.
 
 The three signers represent independent control domains:
 
-Signer A – represents a registered local infrastructure operator - CRYOGAS LLC (Kazakhstan), BIN 230140010661.The entity is a party to an investment agreement 
-with the Government of the Republic of Kazakhstan and is responsible for physical execution and capital deployment for the first terminal i Actobe.
+Signer A – Infrastructure Operations
+Represents the infrastructure operations domain.
 
 Signer B – Engenering & technology / Holding Control
 Represents strategic and commercial interests of the group, including brand, IP, and long-term value alignment.
 
 Signer C – Independent Strategic / Fiduciary Control
 Provides balance, continuity, and risk mitigation across jurisdictions and operating environments.
+
+Corporate rights, operational authority, and Guard enforcement are separate. A corporate right or an operating role alone grants no treasury execution authority. Guard enforces the controls within its mandate.
 
 No single signer can execute treasury actions independently.
 
@@ -103,6 +105,8 @@ Detailed information regarding:
 identities of signers,
 
 associated legal entities,
+
+registration identifiers and project-specific details that identify a signer or an associated legal entity,
 
 jurisdictions,
 
