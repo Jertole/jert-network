@@ -1,64 +1,66 @@
-# Архитектура JERT Marketplace
+# JERT Marketplace Architecture
 
-Публичное описание целевой архитектуры · версия 0.2 · 11 ноября 2026 года
+Public description of the target architecture · Version 0.2 · November 11, 2026
 
 [www.jert.net](https://www.jert.net/)
 
-JERT Marketplace проектируется для торговли товарами и услугами, связанными с логистикой, холодильной инфраструктурой, энергетикой и вычислениями. Участник проходит проверку личности через Didit, получает доступ к предусмотренным для него операциям и оплачивает заказ через подключённый кошелёк. JERT используется как единая расчётная единица Marketplace. JDAT Core связывает в одной сделке движение товара, аренду складской ёмкости и расчёты. CIR определяет, когда подтверждённое состояние сделки позволяет перейти к следующей операции.
+JERT Marketplace is designed for trading goods and services in logistics, cold-chain infrastructure, energy, and computing. Participants verify their identity through Didit, gain access to the operations available to them, and pay for orders through a connected wallet. JERT is the common unit of account for Marketplace. JDAT Core links goods movement, warehouse capacity leasing, and settlement within the same transaction. CIR determines when the verified state of the transaction allows the next operation to proceed.
 
-## Участник, JIPP и Didit
+## Participants, JIPP, and Didit
 
-Участник начинает с регистрации в программе JIPP. Didit используется для проверки личности и повторной проверки в предусмотренных сценариях. Для корпоративного участника процесс предусматривает KYB и проверку полномочий представителя. JERT применяет результат проверки при допуске к функциям Marketplace. Право действовать от имени компании и разрешение на конкретную операцию определяются в JERT с учётом роли участника, его полномочий и статуса сделки.
+Participants start by registering with JIPP. Didit verifies their identity and handles repeat verification where required. For corporate participants, the process includes KYB and verification of the representative's authority. JERT uses the verification result to determine access to Marketplace functions. JERT determines whether a participant may act on behalf of a company or perform a specific operation based on their role, authority, and the status of the transaction.
 
-JIPP ведёт программу лояльности. Средства и приватные ключи клиента остаются в его кошельке. При подключении адреса к учётной записи подтверждение контроля адреса выполняется отдельно от KYC. Для отдельных действий Marketplace может запросить повторную проверку через Didit. Перечень таких действий определяется при настройке сервиса. [Документация Didit](https://help.didit.me/workflows/build-a-verification-workflow)
+JIPP administers the loyalty program. Customers keep their funds and private keys in their own wallets. When a wallet address is linked to an account, proof of control over the address is verified separately from KYC. Marketplace may require repeat verification through Didit for actions defined in its configuration. [Didit documentation](https://help.didit.me/workflows/build-a-verification-workflow)
 
-## Расчёт в JERT и оплата через JERT Wallet
+## Pricing in JERT and Payment through JERT Wallet
 
-Для API Gateway, Corporate Wallet и Marketplace действует единое расчётное правило `jert-reference-v1`. **За 1 JERT принимается 0,10 USD, 0,10 USDT или 0,10 USDC**, в зависимости от единицы исходной суммы. Источник — [версионируемое правило JERT Network](../api-gateway/src/jert-reference-pricing.ts). Значения используются для расчёта эквивалента. Рыночные котировки, цены сделок на DEX и оценка активов ведутся по своим источникам.
+API Gateway, Corporate Wallet, and Marketplace use the same pricing rule, `jert-reference-v1`. **The fixed reference value per JERT is 0.10 USD, 0.10 USDT, or 0.10 USDC**, depending on the unit of the source amount. The values are used to calculate equivalents. Market quotes, DEX execution prices, and asset valuations use their own sources. [Versioned JERT Network pricing rule](../api-gateway/src/jert-reference-pricing.ts)
 
-| Компонент | Применение |
+| Component | Application |
 | --- | --- |
-| API Gateway | Умножает баланс JERT на 0,10 для расчёта USD-эквивалента. Ответ содержит применённое правило, время расчёта и `chainId` сети баланса. USD-эквиваленты энергетических коэффициентов используют то же правило. |
-| Corporate Wallet | Использует то же правило для отображения расчётной стоимости JERT и USD-эквивалента. |
-| Marketplace | Делит итоговую цену предложения в USD, USDT или USDC на 0,10. Например, 25,50 USD дают 255 JERT. Оплата заказа выражена в JERT. |
+| API Gateway | Multiplies the JERT balance by 0.10 to calculate its USD equivalent. The response includes the applied rule, the calculation time, and the `chainId` of the balance network. USD equivalents for energy conversion ratios use the same rule. |
+| Corporate Wallet | Uses the same rule to display the JERT reference value and the USD equivalent. |
+| Marketplace | Divides the final offer price in USD, USDT, or USDC by 0.10. For example, an offer of 25.50 USD requires 255 JERT. The order is payable in JERT. |
 
-### Фиксация суммы заказа
+### Fixing the Order Amount
 
-При оформлении заказа сервер Marketplace использует итоговую цену из согласованного предложения. Для другой валюты он сначала пересчитывает цену в USD по утверждённому для заказа валютному правилу и сохраняет источник, курс и время валютного наблюдения. Сумма JERT рассчитывается десятичной арифметикой, округляется один раз до точности токена по опубликованному правилу и сохраняется в минимальных единицах токена. Сетевая комиссия показывается отдельно. Валюта первичных документов и расчёты с поставщиком определяются применимым договором и требованиями к учёту.
+At checkout, the Marketplace server uses the final price from the agreed offer. For another currency, it first converts the price to USD under the foreign exchange rule approved for the order and records the source, rate, and observation time. The server calculates the JERT amount using decimal arithmetic, rounds once to token precision under the published rounding rule, and stores the result in the token's smallest units. Marketplace displays the network fee separately. The applicable contract and accounting requirements determine the currency of source documents and the terms of supplier settlement.
 
-Расчёт сохраняется при оформлении в существующей записи заказа JDAT Core. Для воспроизводимости в заказе нужны следующие поля.
+At checkout, the server saves the quote in the existing JDAT Core order record. The order records the following information so the calculation can be reproduced.
 
-| Данные | Что фиксируется |
+| Data | Recorded information |
 | --- | --- |
-| Источник и правило | Идентификатор и версия предложения, исходная итоговая сумма и единица цены, идентификатор и версия правила JERT, применённое значение `0.10`, точность и правило округления. Для валютного пересчёта сохраняются его входные данные и результат. |
-| Сеть и актив | `chainId` выбранного маршрута оплаты, адрес контракта JERT, точность токена и адрес получателя. [Публичный реестр JERT](../assets/README.md) указывает Arbitrum One (`42161`) и контракт токена. В расчёте фиксируется утверждённый маршрут конкретного заказа. |
-| Время и срок действия | UTC-время формирования расчёта и `expiresAt` из действующего предложения. Для фиксированного правила время формирования показывает момент его применения. Для внешнего курса сохраняется время наблюдения источника. |
-| Подтверждение расчёта | Идентификатор заказа и расчёта, сохранённая сумма JERT в минимальных единицах и серверная запись о том, что расчёт принят к заказу. |
-| Подтверждение оплаты | Ссылка на подтверждённое событие перевода, включая сеть, хеш транзакции, индекс события и фактическую сумму. |
+| Source and rule | Offer ID and version, original total and pricing unit, JERT rule ID and version, applied value of `0.10`, precision, and rounding rule. For foreign exchange conversion, the inputs and result are also retained. |
+| Network and asset | Payment route `chainId`, JERT contract address, token precision, and recipient address. The public JERT token registry identifies Arbitrum One (`42161`) and the token contract. The quote records the approved route for the specific order. [Public JERT token registry](../assets/README.md) |
+| Time and validity | UTC time when the quote was issued and `expiresAt` from the active offer. For the fixed rule, the issue time shows when the rule was applied. For an external exchange rate, the source observation time is also retained. |
+| Quote confirmation | Order ID and quote ID, the saved JERT amount in the token's smallest units, and the server record that the quote was accepted for the order. |
+| Payment confirmation | A reference to the confirmed transfer event, including the network, transaction hash, event log index, and actual amount. |
 
-JERT Wallet передаёт параметры из сохранённого расчёта в собственный кошелёк клиента для проверки и подписи. Повторный запрос возвращает тот же расчёт. При изменении предложения или по истечении срока оформляется новый расчёт с отдельным подтверждением клиента. Исходная запись сохраняется для сверки. Действующий платёжный контур сопоставляет подтверждённый перевод с сохранённым расчётом по сети, контракту, получателю, сумме и сроку действия. Срок проверяется по времени включения перевода в блок. Подтверждение после истечения срока допустимо для перевода, включённого в блок до `expiresAt`. Одно событие перевода засчитывается один раз. JDAT Core фиксирует результат по заказу, JDAT CIR проверяет готовность к следующему этапу. JIPP ведёт лояльность, а USDT и USDC служат расчётными единицами в этом правиле.
+JERT Wallet passes the saved quote parameters to the customer's own wallet for review and signature. A repeat request returns the same quote. A changed offer or an expired quote requires a new quote and separate customer confirmation. The original record is retained for reconciliation.
 
-## Движение товара, складская аренда и расчёты
+The existing payment flow matches the confirmed transfer against the saved quote by network, token contract, recipient, amount, and validity period. The transfer's block inclusion time determines whether it met the deadline. Confirmation may arrive after expiry if the transfer was included in a block before `expiresAt`. Each transfer event is credited once. JDAT Core records the result against the order, and JDAT CIR checks readiness for the next step. JIPP administers loyalty. USDT and USDC serve as reference units under this rule.
 
-В целевой архитектуре JDAT Core связывает заказ, этапы перемещения товара, использование складской ёмкости и расчётные обязательства. Перевозчик и склад подтверждают фактические события в цифровом процессе Marketplace. Подтверждения приёмки, перемещения и выдачи привязываются к соответствующей партии и заказу. Платформа сверяет с той же сделкой начисления за хранение, аренду и логистику, а также подтверждения оплаты.
+## Goods Movement, Warehouse Leasing, and Settlement
 
-Для аренды складов и складской ёмкости предусмотрен Ethereum-совместимый смарт-контракт аренды (Leasing Contract) в сети Polygon. JDAT Core связывает запись об аренде и её состоянии с соответствующими договором, складом и заказом. Например, перед приёмкой партии CIR может проверить, что складская ёмкость выделена на нужный период и условия приёмки выполнены. Факт приёмки подтверждается складом и обновляет состояние сделки.
+In the target architecture, JDAT Core links the order, stages of goods movement, use of warehouse capacity, and settlement obligations. The carrier and warehouse confirm actual events through the Marketplace workflow. Confirmations of receipt, movement, and release are linked to the relevant shipment and order. Marketplace reconciles storage, leasing, and logistics charges and payment confirmations against the same transaction.
 
-## Контроль исполнения через JDAT CIR
+An Ethereum-compatible Leasing Contract on Polygon is planned for leasing warehouses and warehouse capacity. JDAT Core links the lease record and its status to the relevant agreement, warehouse, and order. For example, before a shipment is received, CIR can verify that warehouse capacity has been allocated for the required period and that the receipt conditions have been met. The warehouse confirms receipt, which updates the transaction state.
 
-JDAT Core хранит состояние заказа и подтверждённые результаты операций. JDAT CIR оценивает готовность к следующему действию. Решение об исполнении опирается на состояние заказа, полномочия участника и подтверждения, необходимые для конкретного этапа.
+## Execution Control through JDAT CIR
 
-| Этап | Что подтверждает право перейти дальше |
+JDAT Core stores order state and verified operation results. JDAT CIR assesses readiness for the next action. The decision to proceed depends on the order state, the participant's authority, and the evidence required for that step.
+
+| Stage | Evidence required to proceed |
 | --- | --- |
-| Регистрация | Установлена личность участника. Для компании подтверждены необходимые сведения и полномочия представителя. |
-| Заказ | Согласованы предложение, стороны, цена и условия исполнения. |
-| Оплата | Подтверждён перевод, соответствующий конкретному заказу. |
-| Складская аренда и приёмка | Подтверждены выделение складской ёмкости, срок аренды и фактическая приёмка партии, если она предусмотрена заказом. |
-| Перемещение и выдача | Подтверждены необходимые этапы движения товара и выполнены условия выдачи, доставки или оказания услуги. |
-| Закрытие | Получены предусмотренные подтверждения исполнения и оформлен результат сделки. |
+| Registration | The participant's identity is established. For a company, the required details and the representative's authority are verified. |
+| Order | The offer, parties, price, and fulfillment terms are agreed. |
+| Payment | A transfer matching the specific order is confirmed. |
+| Warehouse leasing and receipt | Capacity allocation, lease term, and actual shipment receipt are confirmed where required by the order. |
+| Movement and release | The required stages of goods movement are confirmed and the conditions for release, delivery, or service provision are met. |
+| Closure | The required evidence of fulfillment is received and the transaction outcome is recorded. |
 
-Подтверждение платежа обновляет состояние оплаты. Для выдачи товара или начала услуги CIR дополнительно проверяет условия исполнения. При недостающем подтверждении следующий этап остаётся недоступным. Полученное подтверждение обновляет состояние заказа, после чего оценивается право на следующий шаг.
+Payment confirmation updates the payment state. Before goods are released or a service begins, CIR also verifies the fulfillment conditions. The next step becomes available when the required evidence is present. New evidence updates the order state and triggers a fresh assessment of whether the next action may proceed.
 
-## Статус
+## Status
 
-Это описание целевой архитектуры. Доступность отдельных функций и расчётных маршрутов определяется по результатам проверки конкретного сценария.
+This document describes the target architecture. Availability of individual features and payment routes depends on verification of the specific scenario.
