@@ -30,15 +30,15 @@ to maintain regulatory safety (AIFC/AFSA).
 2. Energy Layer Endpoints (New)
 
 GET /energy/rates  
-Returns the active conversion rules and USD reference pricing.
+Returns the active energy conversion ratios. The USD equivalent is the number of JERT per MWh multiplied by the [fixed JERT reference value](src/jert-reference-pricing.ts).
 
 Example Response:
 {
   "networkId": 13371337,
   "jertPerMWh": 100,
   "jertPerMWhCold": 1000,
-  "usdPerMWh": 1.0,
-  "usdPerMWhCold": 10.0,
+  "usdPerMWh": 10.0,
+  "usdPerMWhCold": 100.0,
   "timestamp": "2025-01-01T00:00:00Z"
 }
 
@@ -57,6 +57,12 @@ Response:
   "coldMWhEquivalent": 5,
   "networkId": 13371337
 }
+
+---------------------------------------------------------------------
+
+GET /api/wallet/balance?address=0x...
+
+`priceUSD` and `equivalentUSD` use the fixed reference value. `referencePricing` identifies the applied rule and its USD, USDT and USDC values. `calculatedAt` is the UTC time of the calculation. `networkChainId` is the RPC network identifier as a decimal string. These fields describe a balance calculation.
 
 ---------------------------------------------------------------------
 
@@ -111,8 +117,6 @@ api-gateway/
 
 RPC_URL=http://localhost:8545  
 NETWORK_ID=13371337  
-ENERGY_USD_MWH=1  
-ENERGY_USD_MWH_COLD=10  
 JERT_PER_MWH=100  
 JERT_PER_MWH_COLD=1000  
 

@@ -1,6 +1,7 @@
 
 import dotenv from "dotenv";
 import { ethers } from "ethers";
+import { JERT_REFERENCE_PRICING } from "./jert-reference-pricing";
 
 dotenv.config();
 
@@ -35,11 +36,6 @@ export function getJertContract(provider?: ethers.Provider) {
   return new ethers.Contract(JERT_TOKEN_ADDRESS, JERT_ABI, p);
 }
 
-/**
- * Цена JERT в USD (пока заглушка или из ENV).
- */
 export async function getJertUsdPrice(): Promise<number> {
-  const hardcoded = process.env.JERT_PRICE_USD;
-  if (hardcoded) return Number(hardcoded);
-  return 0.1; // 0.10 USD за JERT по умолчанию
+  return JERT_REFERENCE_PRICING.perJert.USD;
 }

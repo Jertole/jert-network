@@ -1,5 +1,6 @@
 
 import { Router, Request, Response } from "express";
+import { JERT_REFERENCE_PRICING } from "../jert-reference-pricing";
 
 export const energyRouter = Router();
 
@@ -7,8 +8,6 @@ export const energyRouter = Router();
 const NETWORK_ID = parseInt(process.env.NETWORK_ID || "13371337", 10);
 const JERT_PER_MWH = parseFloat(process.env.JERT_PER_MWH || "100");
 const JERT_PER_MWH_COLD = parseFloat(process.env.JERT_PER_MWH_COLD || "1000");
-const ENERGY_USD_MWH = parseFloat(process.env.ENERGY_USD_MWH || "1.0");
-const ENERGY_USD_MWH_COLD = parseFloat(process.env.ENERGY_USD_MWH_COLD || "10.0");
 
 // GET /energy/rates
 energyRouter.get("/rates", async (_req: Request, res: Response) => {
@@ -17,8 +16,8 @@ energyRouter.get("/rates", async (_req: Request, res: Response) => {
       networkId: NETWORK_ID,
       jertPerMWh: JERT_PER_MWH,
       jertPerMWhCold: JERT_PER_MWH_COLD,
-      usdPerMWh: ENERGY_USD_MWH,
-      usdPerMWhCold: ENERGY_USD_MWH_COLD,
+      usdPerMWh: JERT_PER_MWH * JERT_REFERENCE_PRICING.perJert.USD,
+      usdPerMWhCold: JERT_PER_MWH_COLD * JERT_REFERENCE_PRICING.perJert.USD,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

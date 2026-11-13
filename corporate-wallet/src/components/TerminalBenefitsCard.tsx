@@ -94,7 +94,7 @@ const TerminalBenefitsCard: React.FC = () => {
       />
 
       <div style={styles.mono}>
-        ≈ USD: <span style={styles.valueAccent}>${calcUsd(n).toFixed(2)}</span>
+        Reference USD: <span style={styles.valueAccent}>${calcUsd(n).toFixed(2)}</span>
       </div>
 
       <div style={styles.mono}>

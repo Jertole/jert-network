@@ -6,7 +6,7 @@ import {
   PARTNERSHIP_LEVELS,
 } from "../config/partnership";
 import { DEFAULT_JERT_PRICE_USD, DEFAULT_MW_PER_JERT } from "../config/pricing";
-import JertoleLogo from "../assets/jertole-logo.png";
+import JertoleLogo from "../../../assets/jert-logo.svg";
 
 /* ----------------------------- helpers ----------------------------- */
 
@@ -142,7 +142,7 @@ export default function HeaderBar() {
 
         {/* CENTER: PRICE */}
         <div style={centerStyle}>
-          <div style={{ fontSize: 12, opacity: 0.78 }}>JERT Price</div>
+          <div style={{ fontSize: 12, opacity: 0.78 }}>JERT Reference Value</div>
 
           <div
             style={{
