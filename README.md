@@ -18,21 +18,19 @@ Production parameters (pricing, validator governance, compliance rules) are defi
 This repository contains:
 
 - smart-contracts/ - Solidity contracts (Hardhat)
-- corporate-wallet/ - React-based corporate wallet (Treasury UI)
-  PIN-protected with optional second-factor (2FA) security model
+- `corporate-wallet/` — React reference app with MetaMask-confirmed JERT transfers and multisig action placeholders.
 - api-gateway/ - Node.js / TypeScript API gateway
-- mobile-wallet/ - Flutter Android/iOS wallet
-  PIN-protected with optional second-factor (2FA) security model
 - evm-chain/ - EVM chain / node configuration & tooling
 - docs/ - Documentation (incl. contract-addresses.json, specs, roadmap)
-  
+
+Flutter Wallet integration will be added later. The planned flow uses JIPP registration, Didit KYC/AML, and external wallet confirmation.
+
 ## 1. Repository structure
 
 jert-network/
   smart-contracts/       # Hardhat, Solidity contracts, tests
   corporate-wallet/      # React (Vite) multisig UI
   api-gateway/           # Express + ethers API gateway
-  flutter-wallet/        # Flutter JERT mobile wallet
   docs/
     PROJECT_ROADMAP.md   # High-level roadmap & status
 
@@ -68,7 +66,6 @@ evm-chain/ – permissioned EVM
 smart-contracts/ – Solidity code
 api-gateway/ – backend API layer
 corporate-wallet/ – React multisig wallet
-mobile-wallet/ – Flutter wallet
 docs/ – whitepaper, architecture, specifications.
 
 

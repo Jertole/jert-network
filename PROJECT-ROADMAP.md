@@ -1,14 +1,11 @@
 # JERT Network – Full Project Roadmap  
 ### USD-Denominated, Energy-Referenced Utility Token Infrastructure  
-### Status: Active | Updated: 2025-12-20
+### Status: Active | Updated: 2026-11-13
 
 
-## ✅ Milestone: Corporate Wallet (React) — Direct Send JERT on Sepolia
+## Historical Milestone (December 2025) — Direct Send JERT on Sepolia
 
-**Result:** DONE ✅
-
-- PIN-gated transfer flow works end-to-end:
-  - Create/Enter PIN → onSuccess continues → MetaMask tx prompt → Confirm → on-chain confirmed
+**Result recorded in December 2025:** MetaMask confirmation followed by on-chain confirmation on Sepolia.
 - Environment config stabilized:
   - `.env` contains `VITE_JERT_TOKEN_SEPOLIA` (kept backward-compatible `VITE_JERT_TOKEN_ADDRESS`)
 - Resilience improvement:
@@ -16,7 +13,7 @@
 - MetaMask edge-case documented:
   - “Review alert” / missing Confirm can happen with **0 Sepolia ETH** (no gas). Fix: fund wallet with Sepolia ETH.
 
-**Verified:** Sepolia tx confirmed; UI displayed tx hash and “Transaction confirmed”.
+**Published React flow:** Direct Send JERT requires transaction confirmation in MetaMask. The dashboard shows placeholders for creating, confirming, and executing multisig transactions.
 
 Green-baseline -2025-12-14
 ## Canonical Baseline (Status: DONE ✅)
@@ -126,7 +123,7 @@ and energy-linked digital settlement.
 - [x] Balance (JERT + USD + MWh + MWh-cold)  
 - [x] TX history  
 - [ ] Energy calculator  
-- [ ] Multisig UI (3/3 approvals):  
+- [ ] Multisig UI (contract-configured approval threshold):
   - [x] dashboard shell  
   - [ ] TX creation  
   - [ ] pending queue  
@@ -148,7 +145,9 @@ and energy-linked digital settlement.
 - [ ] Integration with contract-addresses.json loader  
 - [ ] UI polishing  
 
-### Status: **50% complete**
+**Status:** Historical checklist. Flutter integration will be added later.
+
+See [Step 3](#step-3--jert-mobile-wallet-flutter) for the August 2026 decision.
 
 ---
 
@@ -270,7 +269,7 @@ This file tracks the high-level roadmap and implementation status for the
 **Goal:** provide an internal dashboard for treasury operations.
 
 - ✅ Contract service layer (`jertContracts.ts`)
-- ✅ Multisig dashboard:
+- ✅ Standalone multisig dashboard component (outside the main screen):
   - ✅ list owners & required confirmations
   - ✅ show ETH + JERT balances of treasury
   - ✅ load transactions via `getTransactionCount()` + `transactions(i)`
@@ -282,24 +281,12 @@ This file tracks the high-level roadmap and implementation status for the
 
 ## Step 3 – JERT Mobile Wallet (Flutter)
 
-**Goal:** simple non-custodial wallet for JERT Permissioned EVM.
+**Planned for a later Flutter update (August 2026 decision)**
 
-- ✅ Onboarding:
-  - ✅ create new private key
-  - ✅ import existing private key (0x…)
-- ✅ Security:
-  - ✅ PIN creation (optional but recommended)
-  - ✅ unlock app with PIN
-  - ✅ 2FA for every JERT transfer (PIN confirmation dialog)
-  - ✅ PIN change via Settings
-- ✅ Wallet core:
-  - ✅ read JERT balance from chain
-  - ✅ read ETH balance (for gas)
-  - ✅ send JERT transactions (signing done inside app)
-- ✅ UX:
-  - ✅ Receive screen with QR code
-  - ✅ basic Home dashboard with latest balances
-  - ✅ list of recent transactions from API Gateway (stub)
+- Use the existing JIPP registration and identity flow, with KYC/AML verification through Didit. Flutter Wallet will use the shared JIPP/JDAT session and verification status.
+- Require explicit transaction confirmation in an external wallet. Multisig operations are subject to the contract's owner and confirmation rules.
+
+The historical prototype design included in-app key creation, import and signing, a local PIN, balance screens, a receive QR code, and a placeholder transaction history.
 
 ---
 
