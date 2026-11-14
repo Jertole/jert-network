@@ -1,71 +1,46 @@
 # JERT Network
 
-JERT (Joule Energy Recovery Token) is an Ethereum-based ERC-20 infrastructure utility token linked to cold energy recovery during LNG regasification.
+JERT Network develops infrastructure for energy, LNG cold recovery, logistics, compute, and marketplace services. The JERT Utility Token (JERT) is designed for infrastructure access and service settlement. The project also uses JERT in its architecture for moving corporate value between supported network environments.
 
-Token Details:
-- Network: Ethereum
-- Standard: ERC-20
-- Total Supply: 1,000,000,000,000 JERT
-- Decimals: 18
-- Contract: 0xE4c6d5Aa39dEa7ba83B65d332D0613dF2fEA4368
+## Network deployments and token identity
 
-JERT represents infrastructure access to cold energy recovery systems and LNG-powered reserve data center nodes. The token does not represent equity or financial yield.
+The JERT DeploymentIndex records 21 network environments. Each entry has its own deployment and verification scope. The count describes infrastructure coverage, including entries without deployed modules. It does not imply separate token issuance, a live transfer route, or customer availability on every network.
 
+The public JERT ERC-20 identity used in the [MetaMask metadata submission](https://github.com/MetaMask/contract-metadata/pull/1951) is **Arbitrum One** (chain ID **42161**), contract [`0x6eBe6b6e7E49ad8d09142DBE0964D034F8774f16`](https://arbiscan.io/token/0x6eBe6b6e7E49ad8d09142DBE0964D034F8774f16), with **18 decimals**. See [official token assets](assets/README.md) and the [21-network inventory](PROJECT-ROADMAP.md#21-network-deployment-index). [Sepolia configuration](docs/contract-addresses.json) is for testing.
 
-This repository contains the reference implementation of the **JERT Network** components (smart contracts, wallet UIs, and API services).
-It does **not** provide any promise of redemption, pricing, or financial return.
-Production parameters (pricing, validator governance, compliance rules) are defined off-chain.
-This repository contains:
+## Corporate value movement and customer wallet
 
-- smart-contracts/ - Solidity contracts (Hardhat)
-- `corporate-wallet/` — React reference app with MetaMask-confirmed JERT transfers and multisig action placeholders.
-- api-gateway/ - Node.js / TypeScript API gateway
-- evm-chain/ - EVM chain / node configuration & tooling
-- docs/ - Documentation (incl. contract-addresses.json, specs, roadmap)
+JERT's internal execution engine is designed to coordinate authorized movement and rebalancing of corporate value between supported network environments, with JERT as the common value asset. JDAT Core has validated this architecture. Actual execution depends on the readiness and approval of the route. USDC, USDT, and EURC can be used separately where settlement or conversion calls for them.
 
-Flutter Wallet integration will be added later. The planned flow uses JIPP registration, Didit KYC/AML, and external wallet confirmation.
+The customer-facing JERT Wallet is a connection interface for users' own wallets. Users retain their keys and review and sign transactions in the connected wallet. This is the design for customer access and settlement. The former Flutter prototype was removed from this repository on 24 December 2025. The corporate wallet UI in this repository is a separate component. See the [planned Flutter integration](PROJECT-ROADMAP.md#planned-flutter-wallet-integration).
 
-## 1. Repository structure
+## JERTNet-OS, JDAT Core, and JDAT CIR
 
-jert-network/
-  smart-contracts/       # Hardhat, Solidity contracts, tests
-  corporate-wallet/      # React (Vite) multisig UI
-  api-gateway/           # Express + ethers API gateway
-  docs/
-    PROJECT_ROADMAP.md   # High-level roadmap & status
+- **JERTNet-OS** coordinates infrastructure deployment, recovery, and operation across supported environments.
+- **JDAT Core** maintains authoritative project state and verifies the state and outcomes of authorized operations.
+- **JDAT CIR (Continuous Infrastructure Readiness)** continuously evaluates readiness for the next authorized operation using current state and evidence.
 
-## Root-level commands
+See the [project roadmap](PROJECT-ROADMAP.md) for status and historical milestones.
 
-For convenience, common tasks can be executed from the repository root.
-These commands proxy to the corresponding package directories without changing
-their internal tooling.
+## Repository contents
 
-Examples:
-- npm run test:smart-contracts
-- npm run build:api-gateway
-- npm run test:corporate-wallet
+| Path | Contents |
+| --- | --- |
+| [`smart-contracts/`](smart-contracts/) | Solidity contracts and Hardhat tooling |
+| [`api-gateway/`](api-gateway/) | Node.js and TypeScript reference API |
+| [`corporate-wallet/`](corporate-wallet/) | React reference UI with MetaMask-confirmed JERT transfers and multisig action placeholders |
+| [`evm-chain/`](evm-chain/) | Configuration and tooling from the earlier permissioned EVM design |
+| [`docs/`](docs/) | Technical references and Sepolia deployment documentation |
+| [`assets/`](assets/) | Official public JERT logos and token metadata reference |
 
-## USD & Energy-Denominated Utility
+This repository publishes reference components and public documentation. The descriptions of JERTNet-OS, JDAT Core, and JDAT CIR summarize the project architecture.
 
-JERT - это **USD-номинированный утилити-токен**, связанный с реальными
-энергетическими потоками внутри инфраструктуры Cryogas:
+Common tasks can be run from the repository root.
 
-- **100 JERT = 1 MWh** электрической/тепловой энергии  
-- **1000 JERT = 1 MWh-Cold** (криогенная холодовая энергия, извлекаемая при регазификации LNG)
+- `npm run test:smart-contracts`
+- `npm run build:api-gateway`
+- `npm run test:corporate-wallet`
 
-Модель двойной деноминации:
+JERT does not represent equity or financial yield. This repository makes no promise of redemption, pricing, or financial return.
 
-- USD-слой — финансовая понятность для инвесторов и партнёров  
-- Energy-слой — реальная индустриальная полезность для терминалов, складов, LCNG, дата-центров  
-
-Все расчёты тарифов и цен выполняются **off-chain** через JERT API (energy oracle),
-см. раздел `docs/EnergyLayer.md`.
-
-Repository structure:
-evm-chain/ – permissioned EVM
-smart-contracts/ – Solidity code
-api-gateway/ – backend API layer
-corporate-wallet/ – React multisig wallet
-docs/ – whitepaper, architecture, specifications.
-
-
+[Official JERT website](https://www.jert.net/) · [JERT Utility Token](https://token.jert.ch/) · [Previous README](https://github.com/Jertole/jert-network/blob/b8b97f1aa6df909b17a0aa768e4426f64b34f0a8/README.md)
