@@ -1,8 +1,9 @@
 // src/config/pricing.ts
 
-// Fixed stub values (NO ETH price, ETH = gas only)
-export const DEFAULT_JERT_PRICE_USD = 0.01; // $0.01 per JERT (stub)
-export const DEFAULT_MW_PER_JERT = 0.0;    // MW cold energy per JERT (stub)
+import { JERT_REFERENCE_PRICING } from "../../../api-gateway/src/jert-reference-pricing";
+
+export const DEFAULT_JERT_PRICE_USD = JERT_REFERENCE_PRICING.perJert.USD;
+export const DEFAULT_MW_PER_JERT = 0.0; // MW cold energy per JERT (stub)
 
 export function calcUsd(jertAmount: number): number {
   if (!Number.isFinite(jertAmount)) return 0;

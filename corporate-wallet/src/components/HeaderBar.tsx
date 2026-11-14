@@ -142,7 +142,7 @@ export default function HeaderBar() {
 
         {/* CENTER: PRICE */}
         <div style={centerStyle}>
-          <div style={{ fontSize: 12, opacity: 0.78 }}>JERT Price</div>
+          <div style={{ fontSize: 12, opacity: 0.78 }}>JERT Reference Value</div>
 
           <div
             style={{

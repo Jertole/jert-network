@@ -3,6 +3,7 @@
 import { Router, Request, Response } from "express";
 import { ethers } from "ethers";
 import { getProvider, getJertContract, getJertUsdPrice } from "../config";
+import { JERT_REFERENCE_PRICING } from "../jert-reference-pricing";
 
 const router = Router();
 
@@ -47,7 +48,9 @@ router.get("/balance", async (req: Request, res: Response) => {
       balanceETH: ethBalance.toFixed(6),
       priceUSD: priceUsd.toFixed(6),
       equivalentUSD: equivalentUsd.toFixed(2),
-      networkChainId: (await provider.getNetwork()).chainId,
+      networkChainId: (await provider.getNetwork()).chainId.toString(),
+      referencePricing: JERT_REFERENCE_PRICING,
+      calculatedAt: new Date().toISOString(),
     });
   } catch (err) {
     console.error("wallet/balance error", err);
