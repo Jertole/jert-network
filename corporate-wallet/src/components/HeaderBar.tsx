@@ -6,7 +6,7 @@ import {
   PARTNERSHIP_LEVELS,
 } from "../config/partnership";
 import { DEFAULT_JERT_PRICE_USD, DEFAULT_MW_PER_JERT } from "../config/pricing";
-import JertoleLogo from "../../../assets/jert-logo.svg";
+import JertoleLogo from "../assets/jertole-logo.png";
 
 /* ----------------------------- helpers ----------------------------- */
 

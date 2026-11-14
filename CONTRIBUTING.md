@@ -4,6 +4,7 @@ Thank you for your interest in contributing to the JERT Network monorepo.
 
 ## General principles
 
+- Publish all public JERT content on GitHub in English only.
 - Keep all changes minimal and focused.
 - Do not break existing CI pipelines — all checks must remain green.
 - Prefer incremental improvements over large refactors.
