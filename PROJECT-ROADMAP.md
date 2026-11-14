@@ -29,9 +29,13 @@ For the Arbitrum One token identity used in the MetaMask submission, see [offici
 
 Public references: [JERT project description](https://token.jert.ch/project-description.html), [JERTNet-OS milestone](https://www.linkedin.com/posts/jertse_jert-jertnetos-ethereum-activity-7479863519111393281-M_ik), and [JERT value movement architecture](https://www.linkedin.com/posts/jertse_jert-access-real-infrastructure-with-utility-activity-7504175180177473536-Sq-e).
 
+## Planned Flutter Wallet integration
+
+Flutter Wallet integration will be added later. The planned flow uses JIPP registration, Didit KYC/AML, the shared JIPP/JDAT session, and explicit transaction confirmation in an external wallet.
+
 ## December 2025 historical roadmap
 
-The original roadmap is preserved in full in the [December 2025 historical snapshot](https://github.com/Jertole/jert-network/blob/b8b97f1aa6df909b17a0aa768e4426f64b34f0a8/PROJECT-ROADMAP.md). Its completion marks, percentages, and deployment plans describe that period.
+The original roadmap is preserved in full in the [December 2025 historical snapshot](https://github.com/Jertole/jert-network/blob/b8b97f1aa6df909b17a0aa768e4426f64b34f0a8/PROJECT-ROADMAP.md). Its completion marks, percentages, and deployment plans describe that period. Current Corporate Wallet transfers are confirmed in MetaMask. Multisig actions in the main dashboard are placeholders, and approval thresholds are configured by the contract.
 
 - The roadmap records a corporate wallet test transfer signed through MetaMask and confirmed on Sepolia.
 - The former Flutter mobile wallet prototype described creating or importing private keys and signing inside the app. The repository stopped tracking the prototype on [24 December 2025](https://github.com/Jertole/jert-network/commit/4cfa6cb5cf9bf822ba1e8b3baf4cfd33fd779659).

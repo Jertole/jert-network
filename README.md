@@ -12,7 +12,7 @@ The public JERT ERC-20 identity used in the [MetaMask metadata submission](https
 
 JERT's internal execution engine is designed to coordinate authorized movement and rebalancing of corporate value between supported network environments, with JERT as the common value asset. JDAT Core has validated this architecture. Actual execution depends on the readiness and approval of the route. USDC, USDT, and EURC can be used separately where settlement or conversion calls for them.
 
-The customer-facing JERT Wallet is a connection interface for users' own wallets. Users retain their keys and review and sign transactions in the connected wallet. This is the design for customer access and settlement. The former Flutter prototype was removed from this repository on 24 December 2025. The corporate wallet UI in this repository is a separate component.
+The customer-facing JERT Wallet is a connection interface for users' own wallets. Users retain their keys and review and sign transactions in the connected wallet. This is the design for customer access and settlement. The former Flutter prototype was removed from this repository on 24 December 2025. The corporate wallet UI in this repository is a separate component. See the [planned Flutter integration](PROJECT-ROADMAP.md#planned-flutter-wallet-integration).
 
 ## JERTNet-OS, JDAT Core, and JDAT CIR
 
@@ -28,7 +28,7 @@ See the [project roadmap](PROJECT-ROADMAP.md) for status and historical mileston
 | --- | --- |
 | [`smart-contracts/`](smart-contracts/) | Solidity contracts and Hardhat tooling |
 | [`api-gateway/`](api-gateway/) | Node.js and TypeScript reference API |
-| [`corporate-wallet/`](corporate-wallet/) | React corporate wallet UI |
+| [`corporate-wallet/`](corporate-wallet/) | React reference UI with MetaMask-confirmed JERT transfers and multisig action placeholders |
 | [`evm-chain/`](evm-chain/) | Configuration and tooling from the earlier permissioned EVM design |
 | [`docs/`](docs/) | Technical references and Sepolia deployment documentation |
 | [`assets/`](assets/) | Official public JERT logos and token metadata reference |
