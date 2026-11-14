@@ -91,20 +91,35 @@ jobs:
 
   mobile-wallet:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile-wallet
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect Flutter project
+        id: flutter_project
+        run: |
+          if [ -f mobile-wallet/pubspec.yaml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Flutter (pinned)
+        if: steps.flutter_project.outputs.present == 'true'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.22.3"
           channel: "stable"
           cache: true
 
-      - run: flutter --version
-      - run: flutter pub get
-      - run: flutter analyze || true
-      - run: flutter test || true
+      - name: Check Flutter project
+        if: steps.flutter_project.outputs.present == 'true'
+        working-directory: mobile-wallet
+        run: |
+          flutter --version
+          flutter pub get
+          flutter analyze || true
+          flutter test || true
+
+      - name: Skip when the Flutter project is absent
+        if: steps.flutter_project.outputs.present != 'true'
+        run: echo "mobile-wallet/pubspec.yaml is absent. Flutter checks skipped."
