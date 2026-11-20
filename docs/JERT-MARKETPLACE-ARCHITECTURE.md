@@ -24,18 +24,33 @@ The customer reviews and signs the saved payment parameters in their connected w
 
 ## Contractual Rights Registry and International Warehouse Receipts
 
-JERT Marketplace records verifiable rights to **goods, infrastructure capacity, and services**. A right is based on a real agreement, applicable law and the authorized parties; the Marketplace record does not create a legal right merely by assigning an identifier. JDAT Core maintains the authenticated rights state, and JDAT CIR/Guard evaluates readiness and authorization for each operation.
+JERT Marketplace records verifiable rights to **goods, infrastructure capacity, and services**. A right is based on a real agreement, applicable law and the authorized parties; the Marketplace record does not create a legal right merely by assigning an identifier. JDAT Core maintains authenticated commercial entitlement records. JDAT CIR assesses readiness from authenticated State and required Evidence. Guard determines whether the proposed operation may proceed under the JDAT constitutional controls and the applicable commercial conditions.
 
-### Universal RIGHT and RIGHT ID
+### Commercial Entitlement and Commercial Entitlement ID
 
-Every registered contractual right has a unique, persistent **RIGHT ID**, separate from the underlying agreement ID, order ID, payment reference, wallet address, asset ID or (where applicable) warehouse receipt ID. The canonical record references:
-- RIGHT ID and right type; issuing/granting legal entity; entitled holder and verified representative; underlying signed agreement, version and governing law;
-- exact subject (goods, physical infrastructure capacity, or a defined service), quantity or capacity, quality/service parameters, location, effective and expiry dates, performance and release conditions;
-- agreed price or pricing formula, prepayment and crediting rules, payment evidence, liabilities and remedies;
-- transfer/assignment/sublease permissions, required consents, existing pledges/encumbrances, current entitlement and remaining unfulfilled balance;
-- authoritative status, approvals, related RIGHT IDs, and immutable references to execution and Evidence records.
+A **Commercial Entitlement** records a contractual right to goods, infrastructure capacity or services. Each entitlement has a persistent **Commercial Entitlement ID**, represented by `commercial_entitlement_id` in the namespace `mkt-ent:<uuid>`. The identifier is distinct from agreement, order, payment, wallet, asset and warehouse receipt identifiers. JDAT constitutional **RIGHT** and **RIGHT ID** identify authority for a mission or operation through the existing JDAT authorization path and identifier scheme. Each identifier type resolves only through its own authoritative registry. APIs and persistence must preserve the type across serialization and lookups.
 
-A draft offer is not an enforceable RIGHT. A RIGHT becomes operative only after the underlying agreement and required authority are verified. Assignment, partial transfer, subdivision, pledge, exercise and expiration are separate state transitions, each gated by the applicable contract, law, verified balance, consents and Guard. A transferred or exercised quantity cannot be allocated twice. The rights registry does not independently establish title, lender acceptance, negotiability or statutory security perfection.
+The canonical commercial record contains:
+
+- Commercial Entitlement ID, entitlement type, granting legal entity, entitled holder and verified representative, signed agreement reference and version, and governing law.
+- Subject, original quantity or capacity with unit, quality or service parameters, location, effective and expiry times, and conditions for performance and release.
+- Agreed price or formula, prepayment and crediting rules, payment Evidence, liabilities and remedies.
+- Contractually permitted actions, required consents, encumbrances, remaining unfulfilled and uncommitted balances, and applicable allocations.
+- Commercial status, monotonic `commercial_entitlement_revision`, and typed links to related entitlements, approvals, execution records and Evidence.
+
+Commercial status records the verified contractual position as `conditional`, `operative`, `suspended`, `fulfilled`, `expired` or `terminated`. A draft offer stays in the offer record. A conditional entitlement becomes operative once the signed agreement, authority of the parties and conditions for effectiveness are verified through the applicable transition. Assignment, subdivision, pledge and partial exercise update the affected records and balances. Full assignment can update the holder on the existing record where the instrument preserves the entitlement's identity. Partial assignment deducts the allocated quantity from the source entitlement and records it under a linked successor ID. Effective dates and expiry apply at the time of the operation, including when the status record has yet to be updated. Title, negotiability, lender acceptance and statutory perfection depend on the applicable legal and transaction requirements.
+
+### JDAT Authorization for Commercial Operations
+
+The Human Owner originates WHAT and provides the constitutional authority under the existing JDAT rules. JDAT resolves the constitutional RIGHT and RIGHT ID through its existing controls. The constitutional RIGHT is evaluated for its scope and current validity in authenticated JDAT State, including applicable time, revocation and prior-use limits. JDAT Core governs that lifecycle. The commercial entitlement registry records contractual status and balance changes independently.
+
+```text
+WHAT → RIGHT → RIGHT ID → authenticated JDAT State → HOW → HOW ID → Guard → Execution → Evidence → JDAT next
+```
+
+A holder request, verified contract, consent, payment, EWR or entitlement record can supply commercial grounds or Evidence for the Human Owner's WHAT. Constitutional authority requires the Human Owner's authenticated authorization through JDAT. After JDAT State is authenticated, JERT AI authors HOW within the authorized scope. Execution follows Guard admission, and independent Evidence supports JDAT next.
+
+Retain the constitutional RIGHT ID in the existing operation field. Add a separate typed collection of commercial references, each containing `commercial_entitlement_id` and `commercial_entitlement_revision`. Bind the commercial references to the operation so that Guard can verify the intended entitlement and revision. Initial registration uses the signed agreement and supporting Evidence as its commercial basis. If it changes an existing conditional record, it also references that record and revision. Any provably commercial legacy IDs may be migrated through an auditable alias map scoped to the commercial registry. An ambiguous legacy reference blocks dependent operations until resolved. Reject commercial identifiers and aliases in constitutional authorization fields.
 
 ### Forward Rights — Goods and Infrastructure Services
 
@@ -43,20 +58,20 @@ The forward-right model applies to **both future goods and prepaid or reserved i
 
 | Right type | Entitlement | Core evidence and limits |
 | --- | --- | --- |
-| **Forward LNG Offtake Right** | Contractual right to specified future LNG quantities under an executed LNG sale and purchase/offtake agreement | RIGHT ID; SPA; product specification; delivery schedule, destination and terms; actual prepaid amount, if any; assignments; remaining contracted tonnes. Future LNG is not booked as existing inventory. |
-| **Cold Storage Capacity / Lease Right** | Contractual right to use reserved refrigerated or frozen-storage capacity over a defined period | RIGHT ID; named facility/zone; reserved mass, volume or pallet positions; temperature/service conditions; commencement, expiry, availability, permitted sublease or transfer and capacity allocation. This is not proof of ownership of goods in storage. |
-| **Compute Service Entitlement / SLA Right** | Contractual right to receive specified compute, connectivity or related digital infrastructure services subject to agreed SLA | RIGHT ID; defined service, allocated capacity or usage units, location/region where relevant, service period, uptime/performance and support commitments, measurement methods, SLA credits/remedies, transfer limits and authorized consumption records. An SLA is a contractual commitment, not a warehouse receipt. |
+| **Forward LNG Offtake Right** | Contractual right to specified future LNG quantities under an executed LNG sale and purchase/offtake agreement | Commercial Entitlement ID; SPA; product specification; delivery schedule, destination and terms; actual prepaid amount, if any; assignments; remaining contracted tonnes. Future LNG is not booked as existing inventory. |
+| **Cold Storage Capacity / Lease Right** | Contractual right to use reserved refrigerated or frozen-storage capacity over a defined period | Commercial Entitlement ID; named facility/zone; reserved mass, volume or pallet positions; temperature/service conditions; commencement, expiry, availability, permitted sublease or transfer and capacity allocation. This is not proof of ownership of goods in storage. |
+| **Compute Service Entitlement / SLA Right** | Contractual right to receive specified compute, connectivity or related digital infrastructure services subject to agreed SLA | Commercial Entitlement ID; defined service, allocated capacity or usage units, location/region where relevant, service period, uptime/performance and support commitments, measurement methods, SLA credits/remedies, transfer limits and authorized consumption records. An SLA is a contractual commitment, not a warehouse receipt. |
 | **Other Goods or Infrastructure Rights** | Additional qualified rights to goods or services listed on JERT Marketplace | An identified legal basis, measurable deliverable and use or transfer conditions, with JDAT State and independent Evidence. |
 
 An offtake prepayment or prepaid storage/compute service may contribute to project financing only to the extent that funds are actually received, available for the relevant purpose, and the counterparty and bank accept the contract and credit structure. **Prepayments are obligations to deliver goods or services (or provide agreed remedies), not automatically shareholder equity or bank-eligible collateral.** They are not valued from the JERT token reference price without verified settlement.
 
-A holder may offer an authorized assignment of a RIGHT on JERT Marketplace only where the contract and applicable law permit it. JDAT records the successor, remaining deliverable and applicable price/settlement evidence without creating duplicate claims. Sale of a RIGHT is separate from physically delivering goods or consuming the service.
+A holder may offer an assignment of a commercial entitlement on JERT Marketplace where the contract and applicable law permit it. JDAT records the successor, remaining deliverable and applicable price and settlement Evidence without creating duplicate claims. Assignment records the change in entitlement. Physical delivery or service consumption is recorded through its own operation.
 
 ### Electronic Warehouse Receipt (EWR) — Any Eligible Stored Goods
 
 An **Electronic Warehouse Receipt (EWR)** is issued by an authorized warehouse operator only after **existing physical goods** have been accepted into verified custody. It acknowledges the goods and the operator's delivery obligation to the legally entitled holder. This is a Marketplace-wide document form for **any eligible goods stored at JERT or approved participating warehouses** (e.g. food, refrigerated products, LNG and other merchandise), not a product restricted to LNG.
 
-Each EWR has its own receipt identifier and a link to the relevant RIGHT ID(s), contract(s) and physical inventory record where applicable. Its required data include issuer/operator identity and signature, depositor and holder, identified warehouse, receipt date, goods description and condition, verified mass/units, lot/serial/container identifiers, applicable storage conditions, warehouse charges, registered liens/pledges, transferability form and governing law. For LNG at Aktobe South, the inventory is identified by **each individual 40-foot ISO LNG container number and fill-batch ID**, with an independently confirmed mass per container; no fictional pooled tank balance is created.
+Each EWR has its own receipt identifier and a link to the relevant Commercial Entitlement IDs, contract(s) and physical inventory record where applicable. Its required data include issuer/operator identity and signature, depositor and holder, identified warehouse, receipt date, goods description and condition, verified mass/units, lot/serial/container identifiers, applicable storage conditions, warehouse charges, registered liens/pledges, transferability form and governing law. For LNG at Aktobe South, the inventory is identified by **each individual 40-foot ISO LNG container number and fill-batch ID**, with an independently confirmed mass per container; no fictional pooled tank balance is created.
 
 International interoperability of the EWR is a design requirement aligned with:
 - [UNCITRAL–UNIDROIT Model Law on Warehouse Receipts (2024)](https://uncitral.un.org/en/mlwr), covering electronic or paper receipts, custody, transfer and security interests;
@@ -70,7 +85,7 @@ A **Cold Storage Capacity Right** grants use of refrigerated space; an **EWR** c
 
 ### Rights-Backed Financing Boundaries
 
-JERT Marketplace may document prepaid sale/offtake agreements, prepaid infrastructure leases, or prepaid compute-service contracts, and their permitted assignment as part of a project financing package. An EWR may separately support goods-backed financing where legally effective. JDAT Core links agreements, RIGHT IDs, payment evidence, allocations, receipts, encumbrances and performance to prohibit double financing of the same entitlement. Banks independently determine credit eligibility, valuation, security and funding conditions. The JERT Utility Token is not itself the warehouse receipt, a security interest or an automatically enforceable RIGHT.
+JERT Marketplace may document prepaid sale/offtake agreements, prepaid infrastructure leases, or prepaid compute-service contracts, and their permitted assignment as part of a project financing package. An EWR may separately support goods-backed financing where legally effective. JDAT Core links agreements, Commercial Entitlement IDs, payment evidence, allocations, receipts, encumbrances and performance to prohibit double financing of the same entitlement. Banks independently determine credit eligibility, valuation, security and funding conditions. The JERT Utility Token serves as the Marketplace payment unit. Applicable agreements, instruments and law establish commercial entitlements, warehouse receipts and security interests.
 
 ## Goods Movement, Storage Leases, and Settlement
 
@@ -86,7 +101,7 @@ At JERT Cold Hills, a buyer can collect part of a lot held in storage and resell
 
 Standard 40-foot ISO LNG tank containers are filled at the production site and stored in the open yard at Aktobe South. JDAT Core tracks the remaining LNG separately by container number and fill batch ID. On receipt, the custodian confirms both identifiers, net mass, and the container's position in the yard. Production, transport, receipt, and release records use the same identifiers.
 
-Each sale or resale covers **20 to 1,000 metric tonnes, inclusive**. A transaction can cover several containers and specifies the agreed mass for each container number. A resale in place transfers the entitlement to the specified quantity of LNG. The containers stay in their yard positions, and physical inventory continues to be tracked by container number. On dispatch, the custodian confirms the container number, the mass handed over, and the recipient. Where the agreement and operating conditions permit a partial release, CIR authorizes it for the specific container and Core updates the balance using the confirmed measurement. A mass discrepancy blocks operations that depend on the affected balance until reconciliation.
+Each sale or resale covers **20 to 1,000 metric tonnes, inclusive**. A transaction can cover several containers and specifies the agreed mass for each container number. A resale in place transfers the entitlement to the specified quantity of LNG. The containers stay in their yard positions, and physical inventory continues to be tracked by container number. On dispatch, the custodian confirms the container number, the mass handed over, and the recipient. For a partial release, CIR assesses readiness for the specific container. Guard requires constitutional authority and verified release conditions before execution. Core updates the balance using the confirmed measurement. A mass discrepancy blocks operations that depend on the affected balance until reconciliation.
 
 ### Storage Utilization and Commercial Metrics
 
@@ -94,23 +109,34 @@ Tonne-days are calculated from actual mass and time in storage. At Aktobe South,
 
 ## Execution Control through JDAT CIR
 
-JDAT Core records order state and confirmed operation results. JDAT CIR assesses readiness for the next action based on the order state, the participant's authority, and the evidence required at that stage.
+JDAT Core records order state and confirmed operation results. JDAT CIR assesses readiness for the next action from authenticated order and entitlement State, verified participant authority and the Evidence required at that stage. The table lists stage-specific Evidence. Each JDAT-controlled operation also requires Guard admission under the constitutional sequence.
 
 | Stage | Evidence required to proceed |
 | --- | --- |
 | Registration | The participant's identity is verified. For a business, the required company information and the representative's authority are verified. |
 | Order | The offer, parties, price, and fulfillment terms are agreed. |
-| Contractual RIGHT registration | The underlying agreement and legal authority are authenticated, the unique RIGHT ID is linked to its deliverable, existing allocations and any restrictions, and the right is classified as operative or conditional. |
+| Commercial entitlement registration | The agreement, parties' authority, deliverable, existing allocations and restrictions are verified. On authorized registration, Core records a unique Commercial Entitlement ID and the verified status. |
 | Forward right transfer or exercise | Contractual consent, holder authority, remaining capacity or goods quantity, encumbrances, and payment and performance Evidence are verified before reassignment or fulfilment. |
 | Electronic warehouse receipt | Physical goods have been received, measured and verified by the authorized custodian; receipt issuance and any transfer or pledge meet the applicable legal and control conditions. |
 | Payment | A transfer matching the specific order is confirmed. |
-| Storage lease and receipt | The Cold Storage Capacity RIGHT ID, facility capacity and lease term are verified; physical goods receipt and any EWR are confirmed separately where required by the order. |
+| Storage lease and receipt | The Commercial Entitlement ID for the storage capacity, facility capacity and lease term are verified; physical goods receipt and any EWR are confirmed separately where required by the order. |
 | Resale in place | The seller's entitlement, available quantity, transfer and settlement terms, and the custodian's acknowledgment of the new holder are confirmed. For LNG, container numbers and fill batches are verified. |
-| Movement and release | Required movements and service-performance records are confirmed; RIGHT ID balances and, where applicable, EWR control, custody and cancellation are reconciled before release, delivery or service provision. |
+| Movement and release | Required movements and service-performance records are confirmed; commercial entitlement balances and, where applicable, EWR control, custody and cancellation are reconciled before release, delivery or service provision. |
 | Closure | The required fulfillment evidence is received and the transaction outcome is recorded. |
 
 Payment confirmation updates the payment status. Before goods are released or a service begins, CIR also checks the applicable fulfillment conditions. The next stage remains unavailable while required evidence is missing. Once the evidence is received, the order state is updated and eligibility for the next action is reassessed.
 
+### Guard Admission and Execution Evidence
+
+Guard verifies constitutional authority and any commercial eligibility required for the operation.
+
+1. **Constitutional authority.** Resolve the constitutional RIGHT ID through JDAT and verify the Human Owner's authorization and its binding to WHAT. Verify authenticated JDAT State and the JERT AI-authored HOW and HOW ID. Match them to the proposed action, actor, target and limits. Apply JDAT validity, revocation, usage and applicable mandatory policy controls.
+2. **Commercial eligibility.** Resolve the required commercial basis from authenticated State. For an existing entitlement, verify its ID and revision, current holder and representative, agreement version, applicable status and effective dates, permitted action, subject and limits, available quantity or capacity, required consents, applicable encumbrances and Evidence. Verify custody and EWR control where required. For initial registration, apply the agreement and party-authority checks in the table above. For an existing record, apply the conditions for the requested transition, including the conditions for activating a conditional entitlement.
+
+Block if a required check fails, Evidence is missing, or a required reference is unresolved, ambiguous or stale. Record the decision against the operation, the constitutional RIGHT ID and HOW ID, the commercial references and the Evidence evaluated. Bind execution to the admitted operation and checked state. At the point of effect, revalidate current authority and the affected state and reserve or conditionally commit balances to prevent duplicate allocation. For external effects, use the operation identifier for idempotency and reconcile uncertain outcomes before retrying. Guard admission records a decision to proceed. Independent Evidence records the actual execution outcome before JDAT next.
+
+For example, a holder at JERT Cold Hills requests resale in place of 2 tonnes from an operative entitlement for 5 tonnes. The entitlement and any required consent support the Human Owner's WHAT for the resale. Guard verifies JDAT authority and checks the seller, lot, quantity, buyer and required settlement or custody Evidence. After authorized execution and independent Evidence, JDAT Core records 3 tonnes for the seller and a linked 2-tonne entitlement for the buyer. Both allocations reference the same physical lot and custodian. A subsequent release requires its own operation scope and corresponding JDAT authority.
+
 ## Status
 
-This document describes the target architecture. The availability of individual features and settlement routes depends on verification of each scenario. The universal RIGHT ID, forward goods and service rights, and interoperable EWR are proposed architecture; legal recognition, deployment and individual financing transactions require separate validation.
+This document describes the target architecture. The availability of individual features and settlement routes depends on verification of each scenario. The Commercial Entitlement ID scheme, forward goods and service rights, and interoperable EWR are proposed architecture; legal recognition, deployment and individual financing transactions require separate validation.
